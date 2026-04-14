@@ -1,0 +1,251 @@
+
+<style>
+* { box-sizing: border-box; }
+.card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 10px; }
+.lh { display: flex; align-items: center; gap: 10px; }
+.ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.lname { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+.ldesc { font-size: 11px; color: var(--color-text-tertiary); }
+.badge { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 500; }
+.srow { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.ph-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+.ph { height: 4px; flex: 1; border-radius: 2px; background: var(--color-border-tertiary); }
+.ph.act { background: #5DCAA5; }
+.ph.done { background: #1D9E75; }
+.instruct { font-size: 13px; color: var(--color-text-secondary); line-height: 1.65; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; margin-bottom: 16px; }
+.big-num { font-size: 42px; font-weight: 500; color: var(--color-text-primary); text-align: center; margin-bottom: 4px; }
+.rcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.rcard { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; text-align: center; border: 0.5px solid var(--color-border-tertiary); }
+.rnum { font-size: 22px; font-weight: 500; }
+.rlabel { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+.threshold-mark { height: 18px; display: flex; align-items: center; margin-bottom: 6px; }
+.tmark-line { height: 2px; background: var(--color-border-secondary); position: relative; flex: 1; }
+.tmark-label { font-size: 11px; color: var(--color-text-tertiary); white-space: nowrap; padding: 0 6px; }
+</style>
+
+<h2 class="sr-only">Calibrador de tinnitus en dB SL: protocolo de dos pasos, umbral auditivo e intensidad del tinnitus</h2>
+
+<div id="v-start">
+  <div style="text-align:center;padding:1.5rem 0.5rem">
+    <p style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">Calibrador de tinnitus</p>
+    <p style="font-size:13px;color:var(--color-text-tertiary);line-height:1.65;margin-bottom:8px">Usá auriculares. Cada capa se mide en 2 pasos:</p>
+    <div style="display:flex;justify-content:center;gap:20px;margin-bottom:20px;font-size:12px;color:var(--color-text-secondary)">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center">1</span> Encontrás tu umbral</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center">2</span> Igualás tu tinnitus</span>
+    </div>
+    <p style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:20px">El resultado es en <strong>dB SL</strong> — la medida real que usa el audiólogo.</p>
+    <button onclick="initApp()" style="padding:10px 28px;border-radius:var(--border-radius-md);border:none;background:#1D9E75;color:white;font-size:14px;font-weight:500;cursor:pointer">Iniciar calibración</button>
+  </div>
+</div>
+
+<div id="v-main" style="display:none">
+  <p style="font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Capas de tinnitus</p>
+  <div id="mainCards"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+    <button onclick="showSummary()" id="summaryBtn" disabled style="padding:10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;font-weight:500;cursor:pointer;color:var(--color-text-primary);opacity:.4">Ver resumen</button>
+    <button onclick="exportProfile()" id="exportBtn" disabled style="padding:10px;border-radius:var(--border-radius-md);border:none;background:#1D9E75;color:white;font-size:13px;font-weight:500;cursor:pointer;opacity:.4">Exportar ↗</button>
+  </div>
+</div>
+
+<div id="v-calibrate" style="display:none">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div id="cDot" class="ldot"></div>
+    <span id="cName" style="font-size:14px;font-weight:500;color:var(--color-text-primary);flex:1"></span>
+    <span id="cFreq" style="font-size:12px;color:var(--color-text-tertiary)"></span>
+    <button onclick="cancelCalib()" style="font-size:12px;color:var(--color-text-tertiary);border:none;background:transparent;cursor:pointer;padding:4px 8px">Cancelar</button>
+  </div>
+  <div class="ph-bar"><div id="ph1" class="ph act"></div><div id="ph2" class="ph"></div></div>
+  <div id="cTitle" style="font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px"></div>
+  <div id="cInstruct" class="instruct"></div>
+  <div id="threshMark" class="threshold-mark" style="display:none">
+    <div class="tmark-label" style="padding-left:0">Umbral</div>
+    <div class="tmark-line"></div>
+    <div class="tmark-label" id="threshPct"></div>
+  </div>
+  <div class="big-num"><span id="cVolNum">5</span><span style="font-size:18px;color:var(--color-text-tertiary)">%</span></div>
+  <p style="text-align:center;font-size:12px;color:var(--color-text-tertiary);margin:0 0 8px" id="cDbHint"></p>
+  <input type="range" min="1" max="100" value="5" step="1" id="cSlider" oninput="onSlider(this.value)" style="width:100%;margin-bottom:20px">
+  <button id="cBtn" style="width:100%;padding:12px;border-radius:var(--border-radius-md);border:none;background:#1D9E75;color:white;font-size:14px;font-weight:500;cursor:pointer"></button>
+</div>
+
+<div id="v-summary" style="display:none">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <p style="font-size:14px;font-weight:500;color:var(--color-text-primary);flex:1;margin:0">Perfil de tinnitus</p>
+    <button onclick="showView('main')" style="font-size:12px;color:var(--color-text-tertiary);border:none;background:transparent;cursor:pointer">Volver</button>
+  </div>
+  <div id="sCards" class="rcards"></div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--color-text-secondary);line-height:1.6" id="sNote"></div>
+  <button onclick="exportProfile()" style="width:100%;padding:10px;border-radius:var(--border-radius-md);border:none;background:#1D9E75;color:white;font-size:13px;font-weight:500;cursor:pointer">Exportar para audiólogo ↗</button>
+</div>
+
+<script>
+var AC = null, MG = null;
+var CA = { nodes:[], g:null };
+var CS = { id:null, phase:1, tVol:5, cVol:5 };
+var RES = {};
+
+var LAYERS = [
+  {id:'ranita', name:'Ranita / grillo', desc:'pulsante', type:'pulse', freq:78, speed:52, color:'#1D9E75'},
+  {id:'viento', name:'Viento', desc:'ruido filtrado', type:'noise', freq:38, speed:null, color:'#378ADD'},
+  {id:'tono', name:'Uuuuuuu', desc:'tono puro', type:'pure', freq:55, speed:null, color:'#7F77DD'},
+  {id:'sube', name:'Sube y baja', desc:'oscilante', type:'sweep', freq:62, speed:28, color:'#BA7517'},
+];
+
+function ff(v){return Math.round(250*Math.pow(32,v/100));}
+function fmtF(f){return f>=1000?(f/1000).toFixed(1)+' kHz':f+' Hz';}
+function spd(v){return parseFloat((0.3*Math.pow(40,v/100)).toFixed(1));}
+function dBSL(t,m){if(!t||t<=0||m<=t)return 0;return Math.round(20*Math.log10(m/t)*10)/10;}
+function dBLabel(d){if(d<=3)return 'al umbral';if(d<=7)return 'leve';if(d<=12)return 'moderado';if(d<=20)return 'intenso';return 'muy intenso';}
+function dBHint(t,m){var d=dBSL(t,m);return d===0?'igual al umbral':'+'+d+' dB SL sobre umbral — '+dBLabel(d);}
+
+function showView(v){
+  ['start','main','calibrate','summary'].forEach(function(n){
+    document.getElementById('v-'+n).style.display=n===v?'block':'none';
+  });
+}
+
+function initApp(){
+  AC=new(window.AudioContext||window.webkitAudioContext)();
+  MG=AC.createGain(); MG.gain.value=1; MG.connect(AC.destination);
+  renderMain(); showView('main');
+}
+
+function renderMain(){
+  var el=document.getElementById('mainCards'); el.innerHTML='';
+  LAYERS.forEach(function(l){
+    var r=RES[l.id];
+    var b=r?'<span class="badge" style="background:'+l.color+'22;color:'+l.color+'">'+fmtF(r.freqHz)+' &mdash; '+r.db+' dB SL ('+dBLabel(r.db)+')</span>':'<span class="badge" style="background:var(--color-background-secondary);color:var(--color-text-tertiary)">Sin calibrar</span>';
+    var d=document.createElement('div'); d.className='card';
+    d.innerHTML='<div class="lh"><div class="ldot" style="background:'+l.color+'"></div><div class="lname">'+l.name+'</div><div class="ldesc">'+l.desc+'</div></div><div class="srow">'+b+'<div style="flex:1"></div><button onclick="startCalib(\''+l.id+'\')" style="padding:5px 14px;border-radius:20px;border:0.5px solid '+l.color+';background:'+l.color+'11;color:'+l.color+';font-size:12px;font-weight:500;cursor:pointer">'+(r?'Recalibrar':'Calibrar')+'</button></div>';
+    el.appendChild(d);
+  });
+  var n=Object.keys(RES).length;
+  ['summaryBtn','exportBtn'].forEach(function(id){
+    var b=document.getElementById(id); b.disabled=n===0; b.style.opacity=n>0?'1':'0.4';
+  });
+}
+
+function stopCA(){
+  CA.nodes.forEach(function(n){try{n.stop&&n.stop(0);}catch(e){}try{n.disconnect();}catch(e){}});
+  if(CA.g){try{CA.g.disconnect();}catch(e){}}
+  CA={nodes:[],g:null};
+}
+
+function playCA(id,vol){
+  stopCA();
+  var l=LAYERS.find(function(x){return x.id===id;}); if(!l)return;
+  var fr=ff(l.freq);
+  var g=AC.createGain(); g.gain.value=vol/100*0.5; g.connect(MG);
+  var ns=[];
+  if(l.type==='pure'){
+    var o=AC.createOscillator(); o.type='sine'; o.frequency.value=fr; o.connect(g); o.start(); ns.push(o);
+  } else if(l.type==='noise'){
+    var sz=AC.sampleRate*4, buf=AC.createBuffer(1,sz,AC.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<sz;i++) d[i]=Math.random()*2-1;
+    var src=AC.createBufferSource(); src.buffer=buf; src.loop=true;
+    var flt=AC.createBiquadFilter(); flt.type='bandpass'; flt.frequency.value=fr; flt.Q.value=2;
+    src.connect(flt); flt.connect(g); src.start(); ns.push(src,flt);
+  } else if(l.type==='pulse'){
+    var o=AC.createOscillator(); o.type='sine'; o.frequency.value=fr;
+    var pg=AC.createGain(); pg.gain.value=0.5;
+    var lfo=AC.createOscillator(); lfo.type='sine'; lfo.frequency.value=spd(l.speed);
+    var lg=AC.createGain(); lg.gain.value=0.5;
+    lfo.connect(lg); lg.connect(pg.gain); o.connect(pg); pg.connect(g);
+    o.start(); lfo.start(); ns.push(o,lfo,lg,pg);
+  } else if(l.type==='sweep'){
+    var o=AC.createOscillator(); o.type='sine'; o.frequency.value=fr;
+    var fl=AC.createOscillator(); fl.type='sine'; fl.frequency.value=spd(l.speed);
+    var fg=AC.createGain(); fg.gain.value=fr*0.45;
+    fl.connect(fg); fg.connect(o.frequency); o.connect(g); o.start(); fl.start(); ns.push(o,fl,fg);
+  }
+  CA={nodes:ns, g:g};
+}
+
+function startCalib(id){
+  if(AC.state==='suspended') AC.resume();
+  var l=LAYERS.find(function(x){return x.id===id;});
+  CS={id:id, phase:1, tVol:5, cVol:5};
+  document.getElementById('cDot').style.background=l.color;
+  document.getElementById('cName').textContent=l.name;
+  document.getElementById('cFreq').textContent=fmtF(ff(l.freq));
+  document.getElementById('threshMark').style.display='none';
+  setPhase(1);
+  showView('calibrate');
+  setTimeout(function(){playCA(id,5);},80);
+}
+
+function setPhase(p){
+  CS.phase=p;
+  document.getElementById('ph1').className='ph '+(p===1?'act':'done');
+  document.getElementById('ph2').className='ph '+(p===2?'act':'');
+  var vol=p===1?5:CS.tVol;
+  var sl=document.getElementById('cSlider');
+  sl.min=p===2?CS.tVol:1; sl.value=vol;
+  CS.cVol=vol;
+  document.getElementById('cVolNum').textContent=vol;
+  document.getElementById('cDbHint').textContent=p===1?'Subí hasta apenas escuchar el tono':dBHint(CS.tVol,vol);
+  if(p===1){
+    document.getElementById('cTitle').textContent='Fase 1 — Encontrá tu umbral';
+    document.getElementById('cInstruct').innerHTML='El sonido está muy suave. Subí el slider despacio hasta escuchar el tono por primera vez, aunque sea <strong>apenas perceptible</strong>. Ese volumen mínimo es tu umbral auditivo.';
+    document.getElementById('cBtn').textContent='Marcar umbral — lo escucho';
+    document.getElementById('cBtn').onclick=markThresh;
+  } else {
+    document.getElementById('threshMark').style.display='flex';
+    document.getElementById('threshPct').textContent=CS.tVol+'%';
+    document.getElementById('cTitle').textContent='Fase 2 — Igualá tu tinnitus';
+    document.getElementById('cInstruct').innerHTML='Ahora subí hasta que este sonido tenga la <strong>misma intensidad</strong> que tu tinnitus. Cuando los dos se sientan iguales en volumen, marcá.';
+    document.getElementById('cBtn').textContent='Marcar intensidad — se igualó';
+    document.getElementById('cBtn').onclick=markMatch;
+  }
+}
+
+function onSlider(v){
+  CS.cVol=+v;
+  document.getElementById('cVolNum').textContent=v;
+  if(CA.g) CA.g.gain.setValueAtTime(+v/100*0.5, AC.currentTime);
+  if(CS.phase===2) document.getElementById('cDbHint').textContent=dBHint(CS.tVol,+v);
+}
+
+function markThresh(){
+  CS.tVol=CS.cVol;
+  setPhase(2);
+}
+
+function markMatch(){
+  var db=dBSL(CS.tVol, CS.cVol);
+  var l=LAYERS.find(function(x){return x.id===CS.id;});
+  RES[CS.id]={name:l.name, freqHz:ff(l.freq), tVol:CS.tVol, mVol:CS.cVol, db:db};
+  stopCA(); renderMain(); showView('main');
+}
+
+function cancelCalib(){stopCA(); showView('main');}
+
+function showSummary(){
+  var el=document.getElementById('sCards'); el.innerHTML='';
+  var totalDb=0, count=0;
+  LAYERS.forEach(function(l){
+    var r=RES[l.id]; if(!r)return;
+    totalDb+=r.db; count++;
+    var d=document.createElement('div'); d.className='rcard';
+    d.style.borderColor=l.color+'55';
+    d.innerHTML='<div class="ldot" style="background:'+l.color+';margin:0 auto 8px"></div>'+
+      '<div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">'+l.name+'</div>'+
+      '<div class="rnum" style="color:'+l.color+'">'+r.db+'<span style="font-size:12px"> dB SL</span></div>'+
+      '<div class="rlabel">'+fmtF(r.freqHz)+'</div>'+
+      '<div class="rlabel" style="margin-top:2px">'+dBLabel(r.db)+'</div>';
+    el.appendChild(d);
+  });
+  var avg=count?Math.round(totalDb/count*10)/10:0;
+  document.getElementById('sNote').innerHTML='<strong>'+count+' capa'+(count!==1?'s':'')+' mapeada'+(count!==1?'s':'')+'.</strong> Promedio: '+avg+' dB SL. Estos valores le indican al audiólogo la intensidad real de tu tinnitus sobre tu propio umbral, independientemente de tu pérdida auditiva.';
+  showView('summary');
+}
+
+function exportProfile(){
+  var parts=LAYERS.filter(function(l){return RES[l.id];}).map(function(l){
+    var r=RES[l.id];
+    return l.name+': '+fmtF(r.freqHz)+', umbral '+r.tVol+'%, match '+r.mVol+'%, '+r.db+' dB SL ('+dBLabel(r.db)+')';
+  });
+  if(!parts.length)return;
+  sendPrompt('Mi perfil de tinnitus calibrado: '+parts.join(' | ')+'. ¿Cómo usa el audiólogo estos valores de dB SL para adaptar el protocolo de audiometría y la calibración del Phonak? ↗');
+}
+</script>

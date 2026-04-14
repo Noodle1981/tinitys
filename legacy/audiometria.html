@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Carga de Variables de Audiometría</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .seccion {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .oido-derecho {
+            border-left: 5px solid red;
+            background-color: #ffe6e6;
+        }
+
+        .oido-izquierdo {
+            border-left: 5px solid blue;
+            background-color: #e6e6ff;
+        }
+
+        label {
+            display: inline-block;
+            width: 150px;
+            font-weight: bold;
+        }
+
+        .freq-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Registro de Audiometría Tonal Liminar</h1>
+
+    <form action="/guardar-audiometria" method="POST">
+
+        <!-- Datos Clínicos y Laborales -->
+        <div class="seccion">
+            <h2>Datos del Paciente e Historia Clínica</h2>
+            <label>Nombre completo:</label> <input type="text" name="nombre" required><br><br>
+            <label>Edad:</label> <input type="number" name="edad" required><br><br>
+            <label>Exposición a ruido:</label>
+            <select name="ruido_laboral">
+                <option value="no">No</option>
+                <option value="si">Sí</option>
+            </select><br><br>
+            <label>Síntomas óticos:</label>
+            <input type="checkbox" name="acufenos" value="si"> Acúfenos
+            <input type="checkbox" name="vertigos" value="si"> Vértigos
+        </div>
+
+        <!-- Umbrales Oído Derecho -->
+        <div class="seccion oido-derecho">
+            <h2>Oído Derecho (Rojo)</h2>
+            <p><strong>Conducción Aérea (Umbrales en dB)</strong></p>
+            <!-- Frecuencias Vía Aérea -->
+            <div class="freq-group"><label>125 Hz:</label> <input type="number" name="od_aerea_125" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>250 Hz:</label> <input type="number" name="od_aerea_250" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>500 Hz:</label> <input type="number" name="od_aerea_500" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>1000 Hz:</label> <input type="number" name="od_aerea_1000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>2000 Hz:</label> <input type="number" name="od_aerea_2000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>3000 Hz:</label> <input type="number" name="od_aerea_3000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>4000 Hz:</label> <input type="number" name="od_aerea_4000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>6000 Hz:</label> <input type="number" name="od_aerea_6000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>8000 Hz:</label> <input type="number" name="od_aerea_8000" min="-10"
+                    max="120"> dB</div>
+
+            <p><strong>Conducción Ósea (500 a 4000 Hz)</strong></p>
+            <div class="freq-group"><label>500 Hz:</label> <input type="number" name="od_osea_500" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>1000 Hz:</label> <input type="number" name="od_osea_1000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>2000 Hz:</label> <input type="number" name="od_osea_2000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>4000 Hz:</label> <input type="number" name="od_osea_4000" min="-10"
+                    max="120"> dB</div>
+
+            <p><label>¿Enmascaramiento?</label>
+                <input type="radio" name="enmascaramiento_od" value="si"> Sí
+                <input type="radio" name="enmascaramiento_od" value="no" checked> No
+            </p>
+        </div>
+
+        <!-- Umbrales Oído Izquierdo -->
+        <div class="seccion oido-izquierdo">
+            <h2>Oído Izquierdo (Azul)</h2>
+            <p><strong>Conducción Aérea (Umbrales en dB)</strong></p>
+            <!-- Frecuencias Vía Aérea -->
+            <div class="freq-group"><label>125 Hz:</label> <input type="number" name="oi_aerea_125" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>250 Hz:</label> <input type="number" name="oi_aerea_250" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>500 Hz:</label> <input type="number" name="oi_aerea_500" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>1000 Hz:</label> <input type="number" name="oi_aerea_1000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>2000 Hz:</label> <input type="number" name="oi_aerea_2000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>3000 Hz:</label> <input type="number" name="oi_aerea_3000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>4000 Hz:</label> <input type="number" name="oi_aerea_4000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>6000 Hz:</label> <input type="number" name="oi_aerea_6000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>8000 Hz:</label> <input type="number" name="oi_aerea_8000" min="-10"
+                    max="120"> dB</div>
+
+            <p><strong>Conducción Ósea (500 a 4000 Hz)</strong></p>
+            <div class="freq-group"><label>500 Hz:</label> <input type="number" name="oi_osea_500" min="-10" max="120">
+                dB</div>
+            <div class="freq-group"><label>1000 Hz:</label> <input type="number" name="oi_osea_1000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>2000 Hz:</label> <input type="number" name="oi_osea_2000" min="-10"
+                    max="120"> dB</div>
+            <div class="freq-group"><label>4000 Hz:</label> <input type="number" name="oi_osea_4000" min="-10"
+                    max="120"> dB</div>
+
+            <p><label>¿Enmascaramiento?</label>
+                <input type="radio" name="enmascaramiento_oi" value="si"> Sí
+                <input type="radio" name="enmascaramiento_oi" value="no" checked> No
+            </p>
+        </div>
+
+        <button type="submit" style="padding: 10px 20px; font-size: 16px;">Guardar Resultados de Audiometría</button>
+    </form>
+
+</body>
+
+</html>

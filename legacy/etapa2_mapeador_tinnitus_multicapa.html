@@ -1,0 +1,250 @@
+
+<style>
+* { box-sizing: border-box; }
+.card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 10px; transition: border-color .2s; }
+.card.on { border-width: 1.5px; }
+.lh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.lname { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+.ldesc { font-size: 11px; color: var(--color-text-tertiary); }
+.cr { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.cr label { font-size: 12px; color: var(--color-text-secondary); width: 74px; flex-shrink: 0; }
+.cr input[type=range] { flex: 1; }
+.cr .v { font-size: 12px; font-weight: 500; color: var(--color-text-primary); width: 58px; text-align: right; white-space: nowrap; }
+.onbtn { padding: 4px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: transparent; font-size: 12px; cursor: pointer; color: var(--color-text-tertiary); transition: all .15s; }
+.hint { font-size: 12px; color: var(--color-text-tertiary); line-height: 1.5; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 10px; }
+</style>
+
+<h2 class="sr-only">Mapeador de tinnitus multicapa — ajustá cada sonido hasta que coincida con lo que escuchás</h2>
+
+<div id="startWrap" style="text-align:center;padding:1.5rem 0.5rem">
+  <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:6px;line-height:1.6;font-weight:500">Mapeador de tinnitus</p>
+  <p style="font-size:13px;color:var(--color-text-tertiary);margin-bottom:20px;line-height:1.6">Usá auriculares. Activá cada capa y ajustá hasta que coincida<br>con lo que escuchás. Podés mezclar las 4 al mismo tiempo.</p>
+  <button onclick="initApp()" style="padding:10px 28px;border-radius:var(--border-radius-md);border:none;background:#1D9E75;color:white;font-size:14px;font-weight:500;cursor:pointer">Iniciar mapeador</button>
+</div>
+
+<div id="app" style="display:none;padding-top:0.25rem">
+  <div class="hint">Activá cada capa con el botón ON/OFF. Ajustá frecuencia y volumen hasta que suene igual a tu tinnitus.</div>
+  <div id="layers"></div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;color:var(--color-text-secondary);width:74px;flex-shrink:0">Vol. general</span>
+    <input type="range" min="10" max="100" value="65" step="1" id="masterVol" oninput="setMasterVol(this.value)" style="flex:1">
+    <span style="font-size:12px;font-weight:500;width:36px;text-align:right" id="masterVolVal">65%</span>
+  </div>
+  <button onclick="saveProfile()" style="width:100%;padding:10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;font-weight:500;cursor:pointer;color:var(--color-text-primary)">Guardar perfil y ver cómo afecta la audiometría ↗</button>
+</div>
+
+<script>
+var ctx = null;
+var masterGain = null;
+var activeNodes = {};
+
+var LAYERS = [
+  { id:'ranita', name:'Ranita / grillo', desc:'pulsante rítmico', type:'pulse', freq:78, vol:55, speed:52, color:'#1D9E75' },
+  { id:'viento', name:'Viento', desc:'ruido continuo', type:'noise', freq:38, vol:42, speed:null, color:'#378ADD' },
+  { id:'tono', name:'Uuuuuuu', desc:'tono puro constante', type:'pure', freq:55, vol:50, speed:null, color:'#7F77DD' },
+  { id:'sube', name:'Sube y baja', desc:'oscilante lento', type:'sweep', freq:62, vol:40, speed:28, color:'#BA7517' },
+];
+
+function freqFromSlider(v) {
+  return Math.round(250 * Math.pow(32, v / 100));
+}
+function fmtFreq(f) {
+  return f >= 1000 ? (f/1000).toFixed(1)+' kHz' : f+' Hz';
+}
+function spdFromSlider(v) {
+  return parseFloat((0.3 * Math.pow(40, v/100)).toFixed(1));
+}
+
+function initApp() {
+  document.getElementById('startWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = 0.65;
+  masterGain.connect(ctx.destination);
+  var el = document.getElementById('layers');
+  el.innerHTML = '';
+  LAYERS.forEach(function(l) { el.appendChild(buildCard(l)); });
+}
+
+function buildCard(l) {
+  var div = document.createElement('div');
+  div.className = 'card';
+  div.id = 'card-'+l.id;
+  div.style.borderColor = 'var(--color-border-tertiary)';
+  var f = freqFromSlider(l.freq);
+  var speedRow = '';
+  if (l.speed !== null) {
+    var spd = spdFromSlider(l.speed);
+    speedRow = '<div class="cr"><label>'+(l.type==='pulse'?'Pulsos/seg':'Velocidad')+'</label><input type="range" min="0" max="100" step="1" value="'+l.speed+'" oninput="updateSpeed(\''+l.id+'\',this.value)"><span class="v" id="spd-'+l.id+'">'+spd+' Hz</span></div>';
+  }
+  div.innerHTML = '<div class="lh"><div class="ldot" style="background:'+l.color+'"></div><div class="lname">'+l.name+'</div><div class="ldesc">'+l.desc+'</div><button class="onbtn" id="btn-'+l.id+'" onclick="toggleLayer(\''+l.id+'\')" style="border-color:'+l.color+'">OFF</button></div><div class="cr"><label>Frecuencia</label><input type="range" min="0" max="100" step="1" value="'+l.freq+'" oninput="updateFreq(\''+l.id+'\',this.value)"><span class="v" id="frq-'+l.id+'">'+fmtFreq(f)+'</span></div><div class="cr"><label>Volumen</label><input type="range" min="0" max="100" step="1" value="'+l.vol+'" oninput="updateVol(\''+l.id+'\',this.value)"><span class="v" id="vol-'+l.id+'">'+l.vol+'%</span></div>'+speedRow;
+  return div;
+}
+
+function makeNoiseBuf() {
+  var sz = ctx.sampleRate * 4;
+  var buf = ctx.createBuffer(1, sz, ctx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i=0; i<sz; i++) d[i] = Math.random()*2-1;
+  return buf;
+}
+
+function stopLayer(id) {
+  var n = activeNodes[id];
+  if (!n) return;
+  n.nodes.forEach(function(node) { try { node.stop && node.stop(0); } catch(e){} try { node.disconnect(); } catch(e){} });
+  try { n.gainNode.disconnect(); } catch(e){}
+  delete activeNodes[id];
+}
+
+function startLayer(id) {
+  stopLayer(id);
+  var l = LAYERS.find(function(x){return x.id===id;});
+  if (!l) return;
+  var freq = freqFromSlider(l.freq);
+  var vol = l.vol/100 * 0.28;
+  var lgain = ctx.createGain();
+  lgain.gain.value = vol;
+  lgain.connect(masterGain);
+  var nodes = [];
+  var refs = {};
+
+  if (l.type === 'pure') {
+    var osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(lgain);
+    osc.start();
+    nodes.push(osc);
+    refs.osc = osc;
+
+  } else if (l.type === 'noise') {
+    var src = ctx.createBufferSource();
+    src.buffer = makeNoiseBuf();
+    src.loop = true;
+    var filt = ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = freq;
+    filt.Q.value = 2.0;
+    src.connect(filt);
+    filt.connect(lgain);
+    src.start();
+    nodes.push(src, filt);
+    refs.filter = filt;
+
+  } else if (l.type === 'pulse') {
+    var osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    var pg = ctx.createGain();
+    pg.gain.value = 0.5;
+    var lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = spdFromSlider(l.speed);
+    var lfog = ctx.createGain();
+    lfog.gain.value = 0.5;
+    lfo.connect(lfog);
+    lfog.connect(pg.gain);
+    osc.connect(pg);
+    pg.connect(lgain);
+    osc.start();
+    lfo.start();
+    nodes.push(osc, lfo, lfog, pg);
+    refs.osc = osc; refs.lfo = lfo;
+
+  } else if (l.type === 'sweep') {
+    var osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    var flfo = ctx.createOscillator();
+    flfo.type = 'sine';
+    flfo.frequency.value = spdFromSlider(l.speed);
+    var flfog = ctx.createGain();
+    flfog.gain.value = freq * 0.45;
+    flfo.connect(flfog);
+    flfog.connect(osc.frequency);
+    osc.connect(lgain);
+    osc.start();
+    flfo.start();
+    nodes.push(osc, flfo, flfog);
+    refs.osc = osc; refs.flfo = flfo; refs.flfog = flfog;
+  }
+
+  activeNodes[id] = { nodes:nodes, gainNode:lgain, refs:refs };
+}
+
+function toggleLayer(id) {
+  var l = LAYERS.find(function(x){return x.id===id;});
+  var btn = document.getElementById('btn-'+id);
+  var card = document.getElementById('card-'+id);
+  if (activeNodes[id]) {
+    stopLayer(id);
+    btn.textContent = 'OFF';
+    btn.classList.remove('on');
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--color-text-tertiary)';
+    card.style.borderColor = 'var(--color-border-tertiary)';
+    card.style.borderWidth = '0.5px';
+  } else {
+    if (ctx.state === 'suspended') ctx.resume();
+    startLayer(id);
+    btn.textContent = 'ON';
+    btn.classList.add('on');
+    btn.style.background = l.color+'22';
+    btn.style.color = l.color;
+    btn.style.borderColor = l.color;
+    card.style.borderColor = l.color;
+    card.style.borderWidth = '1.5px';
+  }
+}
+
+function updateFreq(id, val) {
+  var l = LAYERS.find(function(x){return x.id===id;});
+  l.freq = +val;
+  var freq = freqFromSlider(+val);
+  document.getElementById('frq-'+id).textContent = fmtFreq(freq);
+  var n = activeNodes[id];
+  if (!n) return;
+  var r = n.refs;
+  if (r.osc) r.osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (r.filter) r.filter.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (r.flfog) r.flfog.gain.setValueAtTime(freq*0.45, ctx.currentTime);
+}
+
+function updateVol(id, val) {
+  var l = LAYERS.find(function(x){return x.id===id;});
+  l.vol = +val;
+  document.getElementById('vol-'+id).textContent = val+'%';
+  var n = activeNodes[id];
+  if (n) n.gainNode.gain.setValueAtTime(+val/100*0.28, ctx.currentTime);
+}
+
+function updateSpeed(id, val) {
+  var l = LAYERS.find(function(x){return x.id===id;});
+  l.speed = +val;
+  var spd = spdFromSlider(+val);
+  document.getElementById('spd-'+id).textContent = spd+' Hz';
+  var n = activeNodes[id];
+  if (!n) return;
+  var r = n.refs;
+  if (r.lfo) r.lfo.frequency.setValueAtTime(spd, ctx.currentTime);
+  if (r.flfo) r.flfo.frequency.setValueAtTime(spd, ctx.currentTime);
+}
+
+function setMasterVol(val) {
+  document.getElementById('masterVolVal').textContent = val+'%';
+  if (masterGain) masterGain.gain.setValueAtTime(+val/100, ctx.currentTime);
+}
+
+function saveProfile() {
+  var summary = LAYERS.map(function(l) {
+    var activa = !!activeNodes[l.id];
+    var f = fmtFreq(freqFromSlider(l.freq));
+    var extra = l.speed !== null ? ', vel '+spdFromSlider(l.speed)+'Hz' : '';
+    return l.name+': '+f+', vol '+l.vol+'%'+extra+(activa?' [activa]':'');
+  }).join(' | ');
+  sendPrompt('Mi perfil de tinnitus tiene 4 capas: '+summary+'. ¿Cómo se integra este perfil con la audiometría y la calibración del audífono Phonak? ↗');
+}
+</script>
