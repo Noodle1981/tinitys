@@ -1,0 +1,46 @@
+Esto tiene una coherencia clínica muy sólida, y que vos seas el primer paciente es exactamente el perfil correcto para construir esto bien.
+
+Lo que estás describiendo tiene nombre
+Se llama Patient-Generated Health Data (PGHD) — y es una de las áreas más activas en medicina digital ahora mismo. El gemelo digital que mencionás no es metáfora: empresas como Siemens Healthineers y Phillips lo están desarrollando exactamente para audiología.
+
+Por qué el auto-reporte periódico es valioso clínicamente
+Con Ménière, la fluctuación es la característica central — el problema es que esa fluctuación no se captura porque ocurre entre visitas. Tu idea convierte:
+
+Audiometría cada 6-12 meses (instantánea)
+→ Perfil diario/semanal del paciente (longitudinal)
+Eso es infinitamente más útil para correlacionar:
+
+Episodios de vértigo ↔ cambios en frecuencia de tinnitus
+Ingesta de sal/estrés ↔ intensidad percibida
+Progresión de hipoacusia ↔ desplazamiento de frecuencia percibida
+El cruce Audiometría + Umbral de Tinnitus
+Ya tenés en la app los datos de audiometría (audiometry_entries) y el mapeo de tinnitus (tinnitus_mappings). La vista que describís sería:
+
+Eje X → Frecuencia (250Hz → 8kHz)
+Línea 1 → Umbral auditivo del audiograma (dB HL)
+Línea 2 → Frecuencia del tinnitus mapeado (marcada como overlay)
+Región → Zona de pérdida vs. zona de tinnitus percibido
+Visualmente podría verse como el audiograma clásico pero con el tinnitus superpuesto — algo que no existe en ningún software comercial actual.
+
+Para la validación profesional
+Sobre el pago a los profesionales — hay opciones honestas:
+
+Equity simbólico como advisors si se emocionan con el proyecto (lo cual es probable si ven la app)
+Advisory board de 2 personas = el perfil perfecto de pitch para inversores
+Alternativamente: propuesta de investigación clínica a través de una universidad → pueden participar con tiempo institucional
+En Argentina hay hospitales públicos con servicio de ORL donde los profesionales pueden estar interesados en publicar un paper usando los datos anonimizados → para ellos es valor académico
+Phonak como inversor — es plausible
+Phonak (Sonova Group) tiene un programa activo de inversión en startups de salud auditiva: Sonova Ventures. El ángulo correcto no es "app de tinnitus" sino:
+
+"Plataforma de datos longitudinales de tinnitus que permite correlacionar perfiles audiométricos con experiencia subjetiva del paciente — un dataset que no existe hoy."
+
+Lo que hace a esto interesante para ellos es el dataset más que la app. Los datos de 100-500 pacientes con registros periódicos de tinnitus + audiometrías vinculadas son algo que no tienen y que podrían usar para mejorar los algoritmos de sus audífonos para tinnitus (Phonak tiene la línea Tinnitus Balance).
+
+Prioridades MVP que yo pondría ahora
+Dado todo esto, el orden que tiene más sentido:
+
+Prioridad	Feature	Impacto
+1	Auto-reporte del paciente desde su perfil (ya casi está)	Habilita el historial longitudinal
+2	Vista de historial del paciente — timeline de perfiles y mapeos	Hace visible el valor del dato
+3	Gráfico de cruce Audiometría + Tinnitus	El diferenciador clínico único
+4	Dashboard de evolución (índice de confiabilidad en el tiempo)	Lo que el audiólogo necesita ver

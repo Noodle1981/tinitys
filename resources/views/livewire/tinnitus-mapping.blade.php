@@ -79,6 +79,7 @@ new class extends Component
         .ear-sel-btn.active { background: #1D9E75; color: white; border-color: #1D9E75; box-shadow: 0 2px 4px rgba(29, 158, 117, 0.2); }
         .tab-btn { padding: 8px 16px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; }
         .tab-btn.active { color: #1D9E75; border-bottom-color: #1D9E75; }
+        .wave-canvas { width: 100%; height: 48px; display: block; border-radius: 6px; margin-top: 10px; background: transparent; }
     </style>
 
     <div class="stage-2-container">
@@ -132,6 +133,9 @@ new class extends Component
                                     <span class="v" x-text="spdFromSlider(l.speed) + ' Hz'"></span>
                                 </div>
                             </template>
+                            <canvas class="wave-canvas"
+                                    x-effect="startWaveAnim('left', l, $el)">
+                            </canvas>
                         </div>
                     </template>
                 </div>
@@ -170,6 +174,9 @@ new class extends Component
                                     <span class="v" x-text="spdFromSlider(l.speed) + ' Hz'"></span>
                                 </div>
                             </template>
+                            <canvas class="wave-canvas"
+                                    x-effect="startWaveAnim('right', l, $el)">
+                            </canvas>
                         </div>
                     </template>
                 </div>
