@@ -132,20 +132,40 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
         this.ctx.fillRect(0, 0, this.CW, this.CH);
 
         // Speech banana
-        const ub = [[500, 18], [750, 14], [1000, 12], [1500, 12], [2000, 13], [3000, 16], [4000, 20]];
-        const lb = [[500, 47], [750, 47], [1000, 47], [1500, 42], [2000, 42], [3000, 44], [4000, 50]];
+        const soundsData = [
+            { hz: 250, min: 30, max: 50, sounds: ["u", "o", "m", "z"] },
+            { hz: 500, min: 25, max: 45, sounds: ["a", "i", "e", "j"] },
+            { hz: 1000, min: 20, max: 45, sounds: ["b", "d", "g", "r"] },
+            { hz: 2000, min: 20, max: 50, sounds: ["ch", "sh", "k", "t"] },
+            { hz: 4000, min: 25, max: 55, sounds: ["s", "f", "th"] },
+            { hz: 6000, min: 35, max: 60, sounds: ["agudos"] }
+        ];
+
         this.ctx.beginPath();
-        ub.forEach(([f, d], i) => {
-            const x = this.fX(f), y = this.dY(d);
+        // Upper bounds (min_db)
+        soundsData.forEach((d, i) => {
+            const x = this.fX(d.hz), y = this.dY(d.min);
             i === 0 ? this.ctx.moveTo(x, y) : this.ctx.lineTo(x, y);
         });
-        [...lb].reverse().forEach(([f, d]) => this.ctx.lineTo(this.fX(f), this.dY(d)));
+        // Lower bounds (max_db) en reversa para cerrar la curva
+        [...soundsData].reverse().forEach((d) => this.ctx.lineTo(this.fX(d.hz), this.dY(d.max)));
         this.ctx.closePath();
-        this.ctx.fillStyle = 'rgba(80,160,100,0.12)';
+        
+        this.ctx.fillStyle = 'rgba(255, 235, 59, 0.3)';
         this.ctx.fill();
-        this.ctx.strokeStyle = 'rgba(80,160,100,0.30)';
-        this.ctx.lineWidth = 0.75;
+        this.ctx.strokeStyle = 'rgba(255, 235, 59, 0.6)';
+        this.ctx.lineWidth = 1;
         this.ctx.stroke();
+
+        // Render phonemes texts
+        this.ctx.fillStyle = 'rgba(102, 92, 0, 0.75)'; // Dark yellow/brown for legibility
+        this.ctx.font = '500 11px system-ui';
+        this.ctx.textAlign = 'center';
+        soundsData.forEach((d) => {
+            const x = this.fX(d.hz);
+            const y = this.dY((d.min + d.max) / 2);
+            this.ctx.fillText(d.sounds.join(', '), x, y + 4);
+        });
 
         // Horizontal dB grid + labels
         for (let db = this.DB_MIN; db <= this.DB_MAX; db += 10) {
