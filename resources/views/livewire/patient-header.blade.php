@@ -44,20 +44,24 @@ new class extends Component
 
         <div class="mt-4">
             <flux:navbar class="-mb-px">
-                <flux:navbar.item :href="route('patients.personal', $patientId)" :current="request()->routeIs('patients.personal')" wire:navigate>
-                    Perfil del Paciente
+                <flux:navbar.item icon="user" :href="route('patients.personal', $patientId)" :current="request()->routeIs('patients.personal')" wire:navigate>
+                    Paciente
                 </flux:navbar.item>
-                <flux:navbar.item :href="route('patients.audiometry', $patientId)" :current="request()->routeIs('patients.audiometry')" wire:navigate>
-                    Audiometría Clínica
+
+                <flux:navbar.item icon="chart-bar" :href="route('patients.audiometry', $patientId)" :current="request()->routeIs('patients.audiometry')" wire:navigate>
+                    Audiometría
                 </flux:navbar.item>
-                <flux:navbar.item :href="route('patients.mapeador', $patientId)" :current="request()->routeIs('patients.mapeador')" wire:navigate>
-                    Mapeador Multicapa
-                </flux:navbar.item>
-                <flux:navbar.item :href="route('patients.calibrador', $patientId)" :current="request()->routeIs('patients.calibrador')" wire:navigate>
-                    Calibrador Tinnitus
-                </flux:navbar.item>
-                <flux:navbar.item :href="route('patients.perfil-tinnitus', $patientId)" :current="request()->routeIs('patients.perfil-tinnitus')" wire:navigate>
+
+                <flux:navbar.item icon="clipboard-document-check" :href="route('patients.tinnitus-profile', $patientId)" :current="request()->routeIs('patients.tinnitus-profile')" wire:navigate>
                     Perfil Tinnitus
+                </flux:navbar.item>
+
+                <flux:navbar.item icon="square-3-stack-3d" :href="route('patients.tinnitus-mapping', $patientId)" :current="request()->routeIs('patients.tinnitus-mapping')" wire:navigate>
+                    Mapeador
+                </flux:navbar.item>
+
+                <flux:navbar.item icon="adjustments-vertical" :href="route('patients.tinnitus-calibrator', $patientId)" :current="request()->routeIs('patients.tinnitus-calibrator')" wire:navigate>
+                    Calibrador
                 </flux:navbar.item>
             </flux:navbar>
         </div>

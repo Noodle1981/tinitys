@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audiograma Interactivo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 24px 16px; min-height: 100vh; }
+  .wrapper { width: 100%; max-width: 820px; }
+  .card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  h1 { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
+  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  button { cursor: pointer; font-family: inherit; transition: all .15s; }
+  .ear-btn { display: flex; align-items: center; gap: 7px; padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+  .ear-btn.right-on { border: 2px solid #c0392b; background: #fff5f5; color: #c0392b; }
+  .ear-btn.right-off { border: 1px solid #e2e8f0; background: transparent; color: #64748b; }
+  .ear-btn.left-on { border: 2px solid #2471a3; background: #eff6ff; color: #2471a3; }
+  .ear-btn.left-off { border: 1px solid #e2e8f0; background: transparent; color: #64748b; }
+  .tool-btn { padding: 6px 13px; border-radius: 8px; border: 1px solid #e2e8f0; background: transparent; font-size: 12px; color: #64748b; }
+  .tool-btn:hover { background: #f8fafc; }
+  .spacer { flex: 1; }
+  #audiogram-canvas { display: block; width: 100%; cursor: crosshair; border-radius: 8px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; }
+  .hint { font-size: 11px; color: #94a3b8; margin-left: auto; }
+  #summary-wrap { display: none; }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .summary-table th { text-align: center; padding: 5px 8px; font-weight: 500; color: #94a3b8; border-bottom: 1px solid #e2e8f0; }
+  .summary-table th:first-child { text-align: left; }
+  .summary-table td { text-align: center; padding: 5px 8px; color: #1e293b; }
+  .summary-table td:first-child { text-align: left; font-weight: 500; }
+  .json-wrap { background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+  .json-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .json-label { font-size: 12px; color: #64748b; }
+  .copy-btn { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; }
+  pre { font-family: monospace; font-size: 11px; color: #1e293b; white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="card">
+    <h1>Audiograma — Conducción Aérea</h1>
+    <p class="sub">Seleccioná el oído activo y hacé clic en la grilla para registrar umbrales. Clic sobre un punto existente lo elimina.</p>
+
+    <div class="controls">
+      <button id="btn-right" class="ear-btn right-on" onclick="setEar('right')">
+        <svg width="13" height="13" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        Oído derecho
+      </button>
+      <button id="btn-left" class="ear-btn left-off" onclick="setEar('left')">
+        <svg width="13" height="13" viewBox="0 0 13 13"><line x1="1" y1="1" x2="12" y2="12" stroke="currentColor" stroke-width="2"/><line x1="12" y1="1" x2="1" y2="12" stroke="currentColor" stroke-width="2"/></svg>
+        Oído izquierdo
+      </button>
+      <span class="spacer"></span>
+      <button class="tool-btn" onclick="undoLast()">↩ Deshacer</button>
+      <button class="tool-btn" onclick="clearEar()">Limpiar oído</button>
+      <button class="tool-btn" onclick="clearAll()">Limpiar todo</button>
+    </div>
+
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+      <canvas id="audiogram-canvas"></canvas>
+    </div>
+
+    <div class="legend">
+      <span class="legend-item">
+        <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#c0392b" stroke-width="1.5"/></svg>
+        Derecho (CA)
+      </span>
+      <span class="legend-item">
+        <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1" y1="1" x2="11" y2="11" stroke="#2471a3" stroke-width="1.5"/><line x1="11" y1="1" x2="1" y2="11" stroke="#2471a3" stroke-width="1.5"/></svg>
+        Izquierdo (CA)
+      </span>
+      <span class="legend-item">
+        <span style="display:inline-block;width:13px;height:11px;background:rgba(80,160,100,0.18);border:1px solid rgba(80,160,100,0.35);border-radius:2px;"></span>
+        Banana del habla
+      </span>
+      <span class="hint">Clic para agregar · Clic sobre punto para eliminar</span>
+    </div>
+  </div>
+
+  <div class="card" id="summary-wrap">
+    <p class="json-label" style="margin-bottom:10px;font-weight:500;">Umbrales registrados (dB HL)</p>
+    <div style="overflow-x:auto;">
+      <table class="summary-table" id="summary-table"></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="json-wrap">
+      <div class="json-header">
+        <span class="json-label">JSON para Livewire / guardar en base de datos</span>
+        <button class="copy-btn" id="copy-btn" onclick="copyJSON()">Copiar</button>
+      </div>
+      <pre id="json-output">{
+  "right": {},
+  "left": {}
+}</pre>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const FREQS = [125,250,500,750,1000,1500,2000,3000,4000,6000,8000];
+const FREQ_SHOW = new Set([125,250,500,1000,2000,4000,8000]);
+const FREQ_LABELS = {
+  125:'125', 250:'250', 500:'500', 750:'750',
+  1000:'1k', 1500:'1.5k', 2000:'2k', 3000:'3k',
+  4000:'4k', 6000:'6k', 8000:'8k'
+};
+const DB_MIN = -10, DB_MAX = 120;
+const PAD = {l:54, r:18, t:38, b:50};
+const RC = '#c0392b', LC = '#2471a3';
+
+let activeEar = 'right';
+let audioData = {right:{}, left:{}};
+let hist = [];
+let hov = null;
+let canvas, ctx, dpr = 1, CW = 640, CH = 400;
+
+const pW = () => CW - PAD.l - PAD.r;
+const pH = () => CH - PAD.t - PAD.b;
+const fX = f => PAD.l + Math.log(f / 125) / Math.log(8000 / 125) * pW();
+const dY = db => PAD.t + (db - DB_MIN) / (DB_MAX - DB_MIN) * pH();
+
+function setup() {
+  canvas = document.getElementById('audiogram-canvas');
+  ctx = canvas.getContext('2d');
+  doResize();
+  canvas.addEventListener('click', onClick);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseleave', () => { hov = null; draw(); });
+  draw();
+}
+
+function doResize() {
+  const w = canvas.parentNode.getBoundingClientRect().width || 760;
+  CW = Math.floor(w);
+  CH = Math.round(CW * 0.62);
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = CW * dpr;
+  canvas.height = CH * dpr;
+  canvas.style.height = CH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function evCoords(e) {
+  const r = canvas.getBoundingClientRect();
+  return [
+    (e.clientX - r.left) * CW / r.width,
+    (e.clientY - r.top) * CH / r.height
+  ];
+}
+
+function inPlot(cx, cy) {
+  return cx >= PAD.l - 15 && cx <= CW - PAD.r + 10
+      && cy >= PAD.t - 8  && cy <= CH - PAD.b + 8;
+}
+
+function snapFreq(cx) {
+  let bf = null, bd = Infinity;
+  const lim = pW() / FREQS.length * 0.72;
+  FREQS.forEach(f => {
+    const d = Math.abs(fX(f) - cx);
+    if (d < bd) { bd = d; bf = f; }
+  });
+  return bd <= lim ? bf : null;
+}
+
+function snapDb(cy) {
+  let db = DB_MIN + (cy - PAD.t) / pH() * (DB_MAX - DB_MIN);
+  return Math.max(DB_MIN, Math.min(DB_MAX, Math.round(db / 5) * 5));
+}
+
+function onClick(e) {
+  const [cx, cy] = evCoords(e);
+  if (!inPlot(cx, cy)) return;
+  const freq = snapFreq(cx);
+  if (!freq) return;
+  const db = snapDb(cy);
+
+  hist.push(JSON.parse(JSON.stringify(audioData)));
+  if (hist.length > 60) hist.shift();
+
+  if (audioData[activeEar][freq] !== undefined) {
+    delete audioData[activeEar][freq];
+  } else {
+    audioData[activeEar][freq] = db;
+  }
+  draw();
+  updateJSON();
+  updateSummary();
+}
+
+function onMove(e) {
+  const [cx, cy] = evCoords(e);
+  if (!inPlot(cx, cy)) {
+    if (hov) { hov = null; draw(); }
+    return;
+  }
+  const freq = snapFreq(cx);
+  if (!freq) {
+    if (hov) { hov = null; draw(); }
+    return;
+  }
+  const db = snapDb(cy);
+  const nh = { freq, db, ear: activeEar };
+  if (!hov || hov.freq !== nh.freq || hov.db !== nh.db || hov.ear !== nh.ear) {
+    hov = nh;
+    draw();
+  }
+}
+
+function draw() {
+  const gc = 'rgba(0,0,0,0.08)';
+  const gs = 'rgba(0,0,0,0.16)';
+  const tm = '#999';
+  const tl = '#334155';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Speech banana
+  const ub = [[500,18],[750,14],[1000,12],[1500,12],[2000,13],[3000,16],[4000,20]];
+  const lb = [[500,47],[750,47],[1000,47],[1500,42],[2000,42],[3000,44],[4000,50]];
+  ctx.beginPath();
+  ub.forEach(([f,d], i) => {
+    const x = fX(f), y = dY(d);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  [...lb].reverse().forEach(([f,d]) => ctx.lineTo(fX(f), dY(d)));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(80,160,100,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(80,160,100,0.30)';
+  ctx.lineWidth = 0.75;
+  ctx.stroke();
+
+  // Horizontal dB grid + labels
+  for (let db = DB_MIN; db <= DB_MAX; db += 10) {
+    const y = dY(db);
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, y);
+    ctx.lineTo(CW - PAD.r, y);
+    ctx.strokeStyle = db === 0 ? gs : gc;
+    ctx.lineWidth = db === 0 ? 1 : 0.5;
+    ctx.stroke();
+    ctx.fillStyle = tm;
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText(db, PAD.l - 8, y + 4);
+  }
+
+  // Vertical freq grid + labels
+  FREQS.forEach(freq => {
+    const x = fX(freq);
+    const show = FREQ_SHOW.has(freq);
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.t);
+    ctx.lineTo(x, CH - PAD.b);
+    ctx.strokeStyle = show ? gs : gc;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    if (show) {
+      ctx.fillStyle = tl;
+      ctx.font = '500 12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(FREQ_LABELS[freq], x, CH - PAD.b + 18);
+    }
+  });
+
+  // Axis labels
+  ctx.fillStyle = '#64748b';
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Frecuencia (Hz)', PAD.l + pW() / 2, CH - 6);
+
+  ctx.save();
+  ctx.translate(13, PAD.t + pH() / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Umbral (dB HL)', 0, 0);
+  ctx.restore();
+
+  // Plot border
+  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+  ctx.lineWidth = 0.75;
+  ctx.strokeRect(PAD.l, PAD.t, pW(), pH());
+
+  // Data
+  drawEar('right', RC, drawO);
+  drawEar('left', LC, drawXSym);
+
+  // Hover ghost + tooltip
+  if (hov) {
+    const x = fX(hov.freq), y = dY(hov.db);
+    const col = hov.ear === 'right' ? RC : LC;
+    ctx.globalAlpha = 0.35;
+    if (hov.ear === 'right') drawO(x, y, col); else drawXSym(x, y, col);
+    ctx.globalAlpha = 1;
+
+    const lbl = `${hov.freq >= 1000 ? (hov.freq/1000)+'k' : hov.freq} Hz — ${hov.db} dB HL`;
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'left';
+    const tw = ctx.measureText(lbl).width + 18;
+    let tx = x + 12, ty = y - 26;
+    if (tx + tw > CW - PAD.r) tx = x - tw - 8;
+    if (ty < PAD.t + 4) ty = y + 10;
+
+    ctx.fillStyle = 'rgba(248,250,252,0.96)';
+    roundRect(ctx, tx, ty, tw, 21, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 0.5;
+    roundRect(ctx, tx, ty, tw, 21, 4);
+    ctx.stroke();
+    ctx.fillStyle = '#1e293b';
+    ctx.fillText(lbl, tx + 9, ty + 14);
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function drawEar(ear, col, symFn) {
+  const pts = audioData[ear];
+  const fs = Object.keys(pts).map(Number).sort((a,b) => a - b);
+  if (!fs.length) return;
+
+  ctx.beginPath();
+  fs.forEach((f, i) => {
+    const x = fX(f), y = dY(pts[f]);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  fs.forEach(f => symFn(fX(f), dY(pts[f]), col));
+}
+
+function drawO(x, y, col) {
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fill();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawXSym(x, y, col) {
+  const s = 6.5;
+  ctx.beginPath();
+  ctx.moveTo(x-s, y-s); ctx.lineTo(x+s, y+s);
+  ctx.moveTo(x+s, y-s); ctx.lineTo(x-s, y+s);
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+function setEar(ear) {
+  activeEar = ear;
+  document.getElementById('btn-right').className = 'ear-btn ' + (ear === 'right' ? 'right-on' : 'right-off');
+  document.getElementById('btn-left').className  = 'ear-btn ' + (ear === 'left'  ? 'left-on'  : 'left-off');
+}
+
+function undoLast() {
+  if (!hist.length) return;
+  audioData = hist.pop();
+  draw(); updateJSON(); updateSummary();
+}
+
+function clearEar() {
+  hist.push(JSON.parse(JSON.stringify(audioData)));
+  audioData[activeEar] = {};
+  draw(); updateJSON(); updateSummary();
+}
+
+function clearAll() {
+  hist.push(JSON.parse(JSON.stringify(audioData)));
+  audioData = {right:{}, left:{}};
+  draw(); updateJSON(); updateSummary();
+}
+
+function updateJSON() {
+  const out = {right:{}, left:{}};
+  ['right','left'].forEach(ear => {
+    Object.keys(audioData[ear]).map(Number).sort((a,b)=>a-b).forEach(f => {
+      out[ear][f] = audioData[ear][f];
+    });
+  });
+  document.getElementById('json-output').textContent = JSON.stringify(out, null, 2);
+}
+
+function updateSummary() {
+  const allF = [...new Set([
+    ...Object.keys(audioData.right),
+    ...Object.keys(audioData.left)
+  ].map(Number))].sort((a,b) => a-b);
+
+  const wrap = document.getElementById('summary-wrap');
+  if (!allF.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const fl = f => f >= 1000 ? (f/1000)+'k' : f;
+  const hdr = `<thead><tr>
+    <th>Oído</th>
+    ${allF.map(f => `<th>${fl(f)}</th>`).join('')}
+  </tr></thead>`;
+
+  const mkRow = (ear, col, lbl) => `<tr>
+    <td style="color:${col}">${lbl}</td>
+    ${allF.map(f => `<td>${audioData[ear][f] !== undefined ? audioData[ear][f]+' dB' : '—'}</td>`).join('')}
+  </tr>`;
+
+  document.getElementById('summary-table').innerHTML =
+    hdr + `<tbody>${mkRow('right', RC, '● Derecho')}${mkRow('left', LC, '✕ Izquierdo')}</tbody>`;
+}
+
+function copyJSON() {
+  const text = document.getElementById('json-output').textContent;
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar', 1600);
+  });
+}
+
+window.setEar = setEar;
+window.undoLast = undoLast;
+window.clearEar = clearEar;
+window.clearAll = clearAll;
+window.copyJSON = copyJSON;
+
+window.addEventListener('resize', () => { doResize(); draw(); });
+window.addEventListener('load', setup);
+</script>
+</body>
+</html>

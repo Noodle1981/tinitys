@@ -36,8 +36,8 @@ new class extends Component
         $this->dispatch('mapping-saved');
     }
 }; ?>
-
-<div class="tinnitus-stage-2" x-data="tinnitusMapper(@js($layersConfig), @js($masterVol))">
+<div class="tinnitus-stage-2" wire:ignore x-data="tinnitusMapper(@js($layersConfig), @js($masterVol))">
+    @include('partials.tinnitus-scripts')
     <style>
         .stage-2-container { font-family: 'Inter', sans-serif; --color-background-primary: white; --color-background-secondary: #f8fafc; --color-border-tertiary: #e2e8f0; --color-text-primary: #1e293b; --color-text-secondary: #475569; --color-text-tertiary: #64748b; --border-radius-lg: 12px; --border-radius-md: 8px; }
         .card { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 10px; transition: border-color .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }

@@ -4,185 +4,143 @@ use Livewire\Volt\Component;
 use App\Models\Patient;
 use App\Models\PatientSession;
 use App\Models\AudiometryValue;
+use Illuminate\Support\Facades\Auth;
 
 new class extends Component
 {
-    public $name = '';
-    public $age = '';
+    public $patientId;
     public $noise_exposure = 'no';
     public $acufenos = false;
     public $vertigos = false;
+    public $initialData = ['right' => [], 'left' => []];
 
-    public $od_aerea = [125 => null, 250 => null, 500 => null, 1000 => null, 2000 => null, 3000 => null, 4000 => null, 6000 => null, 8000 => null];
-    public $od_osea = [500 => null, 1000 => null, 2000 => null, 4000 => null];
-    public $enmascaramiento_od = 'no';
-
-    public $oi_aerea = [125 => null, 250 => null, 500 => null, 1000 => null, 2000 => null, 3000 => null, 4000 => null, 6000 => null, 8000 => null];
-    public $oi_osea = [500 => null, 1000 => null, 2000 => null, 4000 => null];
-    public $enmascaramiento_oi = 'no';
-
-    public function save()
+    public function mount($patientId)
     {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'age' => 'required|integer',
-        ]);
+        $this->patientId = $patientId;
+        $patient = Patient::findOrFail($patientId);
+        
+        // Cargar últimos datos clínicos
+        $this->noise_exposure = $patient->noise_exposure ? 'si' : 'no';
+        $this->acufenos = (bool)$patient->tinnitus_symptom;
+        $this->vertigos = (bool)$patient->vertigo_symptom;
 
-        $patient = Patient::create([
-            'name' => $this->name,
-            'age' => $this->age,
+        // Cargar datos del último audiograma para facilitar la edición
+        $latestSession = $patient->sessions()
+            ->where('type', 'doctor')
+            ->latest()
+            ->with(['audiometryValues' => function($q) {
+                $q->where('type', 'air');
+            }])
+            ->first();
+
+        if ($latestSession) {
+            foreach ($latestSession->audiometryValues as $val) {
+                $ear = ($val->ear === 'OD' || $val->ear === 'right') ? 'right' : 'left';
+                $this->initialData[$ear][$val->frequency] = $val->db_level;
+            }
+        }
+    }
+
+    public function save($data)
+    {
+        $patient = Patient::findOrFail($this->patientId);
+
+        // Actualizar perfil clínico del paciente
+        $patient->update([
             'noise_exposure' => $this->noise_exposure == 'si',
             'tinnitus_symptom' => $this->acufenos,
             'vertigo_symptom' => $this->vertigos,
         ]);
 
+        // Crear una nueva sesión (para archivado histórico)
         $session = $patient->sessions()->create([
             'type' => 'doctor',
+            'initiated_by' => Auth::id(),
             'metadata' => [
-                'enmascaramiento_od' => $this->enmascaramiento_od,
-                'enmascaramiento_oi' => $this->enmascaramiento_oi,
+                'interface' => 'audiogram-canvas-v1',
+                'timestamp' => now()->toDateTimeString(),
             ],
         ]);
 
-        // Save OD Air
-        foreach ($this->od_aerea as $freq => $val) {
-            if ($val !== null) {
+        // Guardar Oído Derecho (OD)
+        if (isset($data['right'])) {
+            foreach ($data['right'] as $freq => $db) {
                 $session->audiometryValues()->create([
-                    'ear' => 'OD', 'frequency' => $freq, 'type' => 'air', 'db_level' => $val
-                ]);
-            }
-        }
-        // Save OD Bone
-        foreach ($this->od_osea as $freq => $val) {
-            if ($val !== null) {
-                $session->audiometryValues()->create([
-                    'ear' => 'OD', 'frequency' => $freq, 'type' => 'bone', 'db_level' => $val
-                ]);
-            }
-        }
-        // Save OI Air
-        foreach ($this->oi_aerea as $freq => $val) {
-            if ($val !== null) {
-                $session->audiometryValues()->create([
-                    'ear' => 'OI', 'frequency' => $freq, 'type' => 'air', 'db_level' => $val
-                ]);
-            }
-        }
-        // Save OI Bone
-        foreach ($this->oi_osea as $freq => $val) {
-            if ($val !== null) {
-                $session->audiometryValues()->create([
-                    'ear' => 'OI', 'frequency' => $freq, 'type' => 'bone', 'db_level' => $val
+                    'ear' => 'OD', 
+                    'frequency' => (int)$freq, 
+                    'type' => 'air', 
+                    'db_level' => (int)$db
                 ]);
             }
         }
 
-        session()->flash('message', 'Audiometría guardada correctamente.');
-        $this->redirectRoute('dashboard');
+        // Guardar Oído Izquierdo (OI)
+        if (isset($data['left'])) {
+            foreach ($data['left'] as $freq => $db) {
+                $session->audiometryValues()->create([
+                    'ear' => 'OI', 
+                    'frequency' => (int)$freq, 
+                    'type' => 'air', 
+                    'db_level' => (int)$db
+                ]);
+            }
+        }
+
+        $this->dispatch('audiometry-saved');
+        flux()->toast(
+            heading: 'Audiometría Guardada',
+            text: 'Los resultados se han archivado en la ficha del paciente.',
+            variant: 'success'
+        );
     }
 }; ?>
 
-<div class="audiometry-container">
-    <style>
-        .audiometry-container { font-family: 'Inter', sans-serif; }
-        .seccion { margin-bottom: 20px; padding: 15px; border: 1px solid var(--color-border-secondary); border-radius: 8px; background: white; }
-        .oido-derecho { border-left: 5px solid #ef4444; background-color: #fef2f2; }
-        .oido-izquierdo { border-left: 5px solid #3b82f6; background-color: #eff6ff; }
-        .title-h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 20px; color: var(--color-text-primary); }
-        .title-h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 10px; color: var(--color-text-primary); }
-        label { display: inline-block; width: 150px; font-weight: 600; font-size: 0.875rem; color: var(--color-text-secondary); }
-        .freq-group { margin-bottom: 10px; display: flex; align-items: center; }
-        .input-num { padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; width: 80px; }
-        .btn-save { padding: 10px 24px; background: #1D9E75; color: white; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
-        .btn-save:hover { background: #15805d; }
-    </style>
-
-    <form wire:submit.prevent="save">
-        <!-- Datos Clínicos y Laborales -->
-        <div class="seccion">
-            <h2 class="title-h2">Datos del Paciente e Historia Clínica</h2>
-            <div class="mb-4">
-                <label>Nombre completo:</label>
-                <input type="text" wire:model="name" class="input-num !w-64" required>
-            </div>
-            <div class="mb-4">
-                <label>Edad:</label>
-                <input type="number" wire:model="age" class="input-num" required>
-            </div>
-            <div class="mb-4">
-                <label>Exposición a ruido:</label>
-                <select wire:model="noise_exposure" class="input-num !w-32">
-                    <option value="no">No</option>
-                    <option value="si">Sí</option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label>Síntomas óticos:</label>
-                <label class="!w-auto mr-4 font-normal"><input type="checkbox" wire:model="acufenos" class="mr-1"> Acúfenos</label>
-                <label class="!w-auto font-normal"><input type="checkbox" wire:model="vertigos" class="mr-1"> Vértigos</label>
-            </div>
+<div class="audiometry-entry-root">
+    <div class="space-y-6">
+        {{-- Header informativo --}}
+        <div>
+            <h2 class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Evaluación de Audiometría Tonal</h2>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">Ingreso de umbrales por conducción aérea. Cada guardado genera un nuevo registro histórico.</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Umbrales Oído Derecho -->
-            <div class="seccion oido-derecho">
-                <h2 class="title-h2">Oído Derecho (Rojo)</h2>
-                <p class="font-bold mb-2 text-sm">Conducción Aérea (dB)</p>
-                @foreach([125, 250, 500, 1000, 2000, 3000, 4000, 6000, 8000] as $freq)
-                    <div class="freq-group">
-                        <label>{{ $freq }} Hz:</label>
-                        <input type="number" wire:model="od_aerea.{{ $freq }}" min="-10" max="120" class="input-num">
-                        <span class="ml-2 text-xs text-gray-500">dB</span>
-                    </div>
-                @endforeach
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {{-- Panel Izquierdo: Datos Clínicos --}}
+            <div class="lg:col-span-3 space-y-4">
+                <div class="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                    <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Contexto Clínico</h3>
+                    
+                    <div class="space-y-4">
+                        <flux:field>
+                            <flux:label>Exposición a ruido</flux:label>
+                            <flux:select wire:model="noise_exposure">
+                                <option value="no">Sin exposición</option>
+                                <option value="si">Exposición laboral/recreativa</option>
+                            </flux:select>
+                        </flux:field>
 
-                <p class="font-bold mt-4 mb-2 text-sm">Conducción Ósea (dB)</p>
-                @foreach([500, 1000, 2000, 4000] as $freq)
-                    <div class="freq-group">
-                        <label>{{ $freq }} Hz:</label>
-                        <input type="number" wire:model="od_osea.{{ $freq }}" min="-10" max="120" class="input-num">
-                        <span class="ml-2 text-xs text-gray-500">dB</span>
+                        <div class="space-y-2">
+                            <flux:label>Síntomas reportados</flux:label>
+                            <flux:checkbox wire:model="acufenos" label="Acúfenos / Tinnitus" />
+                            <flux:checkbox wire:model="vertigos" label="Vértigos / Inestabilidad" />
+                        </div>
                     </div>
-                @endforeach
+                </div>
 
-                <div class="mt-4">
-                    <label>¿Enmascaramiento?</label>
-                    <label class="!w-auto mr-4 font-normal"><input type="radio" wire:model="enmascaramiento_od" value="si"> Sí</label>
-                    <label class="!w-auto font-normal"><input type="radio" wire:model="enmascaramiento_od" value="no"> No</label>
+                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                    <h3 class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-2">Instrucciones</h3>
+                    <ul class="text-xs text-blue-800 dark:text-blue-300 space-y-1.5 list-disc pl-4">
+                        <li>Seleccioná el oído <b>Derecho</b> o <b>Izquierdo</b>.</li>
+                        <li>Hacé clic en la grilla para marcar el umbral.</li>
+                        <li>Clic en un punto existente para eliminarlo.</li>
+                        <li>Los puntos se autoconectan por frecuencia.</li>
+                    </ul>
                 </div>
             </div>
 
-            <!-- Umbrales Oído Izquierdo -->
-            <div class="seccion oido-izquierdo">
-                <h2 class="title-h2">Oído Izquierdo (Azul)</h2>
-                <p class="font-bold mb-2 text-sm">Conducción Aérea (dB)</p>
-                @foreach([125, 250, 500, 1000, 2000, 3000, 4000, 6000, 8000] as $freq)
-                    <div class="freq-group">
-                        <label>{{ $freq }} Hz:</label>
-                        <input type="number" wire:model="oi_aerea.{{ $freq }}" min="-10" max="120" class="input-num">
-                        <span class="ml-2 text-xs text-gray-500">dB</span>
-                    </div>
-                @endforeach
-
-                <p class="font-bold mt-4 mb-2 text-sm">Conducción Ósea (dB)</p>
-                @foreach([500, 1000, 2000, 4000] as $freq)
-                    <div class="freq-group">
-                        <label>{{ $freq }} Hz:</label>
-                        <input type="number" wire:model="oi_osea.{{ $freq }}" min="-10" max="120" class="input-num">
-                        <span class="ml-2 text-xs text-gray-500">dB</span>
-                    </div>
-                @endforeach
-
-                <div class="mt-4">
-                    <label>¿Enmascaramiento?</label>
-                    <label class="!w-auto mr-4 font-normal"><input type="radio" wire:model="enmascaramiento_oi" value="si"> Sí</label>
-                    <label class="!w-auto font-normal"><input type="radio" wire:model="enmascaramiento_oi" value="no"> No</label>
-                </div>
+            {{-- Panel Derecho: El Audiograma --}}
+            <div class="lg:col-span-9">
+                @include('partials.audiogram-canvas')
             </div>
         </div>
-
-        <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-save shadow-lg">Guardar Resultados de Audiometría</button>
-        </div>
-    </form>
+    </div>
 </div>
