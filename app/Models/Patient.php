@@ -18,6 +18,10 @@ class Patient extends Model
         'comorbidities',
         'mental_health_context',
         'medications',
+        'address',
+        'city',
+        'province',
+        'phone',
         'doctor_id',
         'user_id',
         'age', // Keep for compatibility if needed

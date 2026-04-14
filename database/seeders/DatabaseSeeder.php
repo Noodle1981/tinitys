@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Create a Patient User (for refinement)
         $patientUser = User::factory()->create([
-            'name' => 'Juan Perez',
+            'name' => 'Omar Olivera',
             'email' => 'paciente@example.com',
             'role' => 'patient',
             'password' => bcrypt('password'),
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
 
         // 3. Create the Patient Profile linking both
         \App\Models\Patient::create([
-            'name' => 'Juan Perez',
+            'name' => 'Omar Olivera',
             'doctor_id' => $doctor->id,
             'user_id' => $patientUser->id,
         ]);

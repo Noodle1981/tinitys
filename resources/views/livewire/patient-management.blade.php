@@ -14,6 +14,7 @@ new class extends Component
 
     // Form Fields
     public $dni, $name, $birth_date, $gender, $occupation;
+    public $address, $city, $province, $phone;
     public $laterality, $evolution_time;
     public $sound_type = [];
     public $comorbidities = [];
@@ -59,6 +60,10 @@ new class extends Component
         $this->birth_date = $patient->birth_date ? $patient->birth_date->format('Y-m-d') : null;
         $this->gender = $patient->gender;
         $this->occupation = $patient->occupation;
+        $this->address = $patient->address;
+        $this->city = $patient->city;
+        $this->province = $patient->province;
+        $this->phone = $patient->phone;
         $this->laterality = $patient->laterality;
         $this->sound_type = $patient->sound_type ?? [];
         $this->evolution_time = $patient->evolution_time;
@@ -102,6 +107,10 @@ new class extends Component
             'birth_date' => $this->birth_date,
             'gender' => $this->gender,
             'occupation' => $this->occupation,
+            'address' => $this->address,
+            'city' => $this->city,
+            'province' => $this->province,
+            'phone' => $this->phone,
             'laterality' => $this->laterality,
             'sound_type' => $this->sound_type,
             'evolution_time' => $this->evolution_time,
@@ -118,6 +127,11 @@ new class extends Component
             Patient::create($data);
         }
 
+        // Sincronizar el nombre con el usuario asociado si lo tiene
+        if ($this->user_id) {
+            User::where('id', $this->user_id)->update(['name' => $this->name]);
+        }
+
         $this->showModal = false;
         $this->resetForm();
         $this->dispatch('patient-saved');
@@ -132,6 +146,7 @@ new class extends Component
     {
         $this->editing = null;
         $this->dni = $this->name = $this->birth_date = $this->gender = $this->occupation = null;
+        $this->address = $this->city = $this->province = $this->phone = null;
         $this->laterality = $this->evolution_time = null;
         $this->sound_type = [];
         $this->comorbidities = [];
@@ -238,6 +253,26 @@ new class extends Component
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Ocupación</label>
                             <flux:input wire:model="occupation" placeholder="Ej: Operario industrial" />
                         </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Domicilio</label>
+                                <flux:input wire:model="address" placeholder="Ej: Calle Falsa 123" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Ciudad</label>
+                                <flux:input wire:model="city" placeholder="Ej: Buenos Aires" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Provincia</label>
+                                <flux:input wire:model="province" placeholder="Ej: Buenos Aires" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Teléfono</label>
+                                <flux:input wire:model="phone" placeholder="Ej: +54 9 11 1234 5678" />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Sección 2: Caracterización -->
@@ -278,18 +313,6 @@ new class extends Component
 
                     <!-- Sección 3: Antecedentes -->
                     <div x-show="tab === 'history'" class="space-y-4">
-                        <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                            <flux:checkbox label="Crear cuenta de acceso (Gemelo Digital)" wire:model.live="create_user" />
-                            <p class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 ml-6">Permite al paciente acceder desde su cuenta personal para el auto-refinamiento.</p>
-                            
-                            @if($create_user)
-                                <div class="grid grid-cols-2 gap-4 mt-4">
-                                    <flux:input label="Email de Usuario" wire:model="user_email" placeholder="paciente@ejemplo.com" />
-                                    <flux:input label="Contraseña Temporal" type="password" wire:model="user_password" />
-                                </div>
-                            @endif
-                        </div>
-
                         <div>
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Comorbilidades</label>
                             <div class="grid grid-cols-2 gap-2 mt-2">
@@ -307,14 +330,44 @@ new class extends Component
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Medicamentos</label>
                             <textarea wire:model="medications" placeholder="Fármacos actuales u ototóxicos" rows="2" class="w-full border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md text-sm"></textarea>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Vincular con Usuario (Digital Twin)</label>
-                            <flux:select wire:model="user_id">
-                                <option value="">No vincular todavía</option>
-                                @foreach ($users as $u)
-                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
-                                @endforeach
-                            </flux:select>
+
+                        <hr class="border-zinc-200 dark:border-zinc-700 my-4" />
+
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Acceso al Sistema (Gemelo Digital)</h3>
+                            
+                            @if(!$user_id)
+                                <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                    <flux:checkbox label="Crear nueva cuenta para el paciente" wire:model.live="create_user" />
+                                    <p class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 ml-6">Genera un usuario para que el paciente ingrese con su email y pueda auto-evaluarse.</p>
+                                    
+                                    @if($create_user)
+                                        <div class="grid grid-cols-2 gap-4 mt-4">
+                                            <flux:input label="Email de Acceso" wire:model="user_email" placeholder="paciente@ejemplo.com" />
+                                            <flux:input label="Contraseña Temporal" type="password" wire:model="user_password" />
+                                        </div>
+                                    @endif
+                                </div>
+                            @elseif($editing && $editing->user_id == $user_id)
+                                <div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800 flex items-start gap-3">
+                                    <flux:icon.check-circle class="size-5 text-emerald-500 mt-0.5" />
+                                    <div>
+                                        <p class="text-sm font-medium text-emerald-800 dark:text-emerald-300">Cuenta Vinculada Activa</p>
+                                        <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Este paciente ya dispone de un acceso validado al sistema.</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if(!$create_user)
+                                <div>
+                                    <flux:select wire:model.live="user_id" label="{{ $user_id ? 'Cambiar cuenta vinculada (opcional)' : 'O vincular a una cuenta existente' }}">
+                                        <option value="">No vincular a ninguna cuenta (Sin acceso)</option>
+                                        @foreach ($users as $u)
+                                            <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                                        @endforeach
+                                    </flux:select>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

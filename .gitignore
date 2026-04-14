@@ -25,3 +25,4 @@ yarn-error.log
 *.sqlite
 database/*.sqlite
 /storage/*.sqlite
+/mcp-sqlite
