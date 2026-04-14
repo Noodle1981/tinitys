@@ -2,33 +2,59 @@
 
 use Livewire\Volt\Component;
 use App\Models\TinnitusProfile;
+use App\Models\TinnitusMapping;
 use Illuminate\Support\Facades\Auth;
+use Flux\Flux;
 
 new class extends Component
 {
     public $patientId;
+
+    // Oídos afectados en esta sesión
+    public $affectedEars = 'ambos'; // 'OI', 'OD', 'ambos'
+
+    // Oído activo en la UI (cuál está siendo configurado)
+    public $activeEar = 'left';
+
+    // Sliders globales (sistémicos, aplican a ambos oídos)
     public $sleep = 2;
     public $stress = 3;
     public $noise = 4;
     public $health = 3;
     public $alc = 1;
-    public $freqSelected = 'Medio ~2kHz';
 
-    public $index = 0;
-    public $statusBadge = [
-        'color' => '#1D9E75',
-        'bg' => '#E1F5EE',
-        'text' => '#0F6E56',
-        'label' => 'Cargando...',
-        'desc' => 'Calculando índice...'
-    ];
-    public $recommendations = [];
+    // Frecuencia percibida por oído
+    public $leftFreq = 'Medio ~2kHz';
+    public $rightFreq = 'Medio ~2kHz';
+
+    // Valores calculados
+    public $index = 0;       // índice global
+    public $leftIndex = 0;
+    public $rightIndex = 0;
     public $leftEarVal = 'Moderado';
     public $rightEarVal = 'Leve';
+    public $statusBadge = [];
+    public $recommendations = [];
+
+    // Último mapping por oído (para mostrar correlación)
+    public $lastLeftMapping = null;
+    public $lastRightMapping = null;
 
     public function mount($patientId = null)
     {
         $this->patientId = $patientId;
+
+        // Cargar último mapping para correlación
+        if ($patientId) {
+            $leftM = TinnitusMapping::where('patient_id', $patientId)
+                ->whereIn('ear', ['OI', 'ambos'])->latest()->first();
+            $this->lastLeftMapping = $leftM ? $leftM->created_at->diffForHumans() : null;
+
+            $rightM = TinnitusMapping::where('patient_id', $patientId)
+                ->whereIn('ear', ['OD', 'ambos'])->latest()->first();
+            $this->lastRightMapping = $rightM ? $rightM->created_at->diffForHumans() : null;
+        }
+
         $this->calculate();
     }
 
@@ -37,43 +63,64 @@ new class extends Component
         $this->calculate();
     }
 
-    public function setFreq($val)
+    public function setAffectedEars($val) // 'OI', 'OD', 'ambos'
     {
-        $this->freqSelected = $val;
+        $this->affectedEars = $val;
+        $this->activeEar = ($val === 'OD') ? 'right' : 'left';
+        $this->calculate();
+    }
+
+    public function setActiveEar($ear) // 'left' o 'right'
+    {
+        $this->activeEar = $ear;
+    }
+
+    public function setFreq($ear, $val)
+    {
+        if ($ear === 'left') $this->leftFreq = $val;
+        else $this->rightFreq = $val;
         $this->calculate();
     }
 
     protected function calculate()
     {
+        $intensities = ['Mínimo', 'Leve', 'Moderado', 'Intenso', 'Muy intenso'];
+
+        // Índice global (refleja condición general del paciente hoy)
         $raw = ($this->stress * 20) + ((5 - $this->sleep) * 20) + ($this->noise * 12) + ((5 - $this->health) * 12) + ($this->alc * 16);
         $this->index = min(100, round($raw * 100 / 300));
 
-        $intensities = ['Mínimo', 'Leve', 'Moderado', 'Intenso', 'Muy intenso'];
-        $this->leftEarVal = $intensities[min(4, max(0, round(($this->stress + $this->noise) / 2) - 1))];
+        // Índice por oído (mismo cálculo base + ajuste por frecuencia percibida)
+        $freqBoost = ['Grave ~500Hz' => 0, 'Medio ~2kHz' => 4, 'Agudo ~4kHz' => 8, 'Muy agudo ~8kHz' => 10];
+        $leftBoost = $freqBoost[$this->leftFreq] ?? 0;
+        $rightBoost = $freqBoost[$this->rightFreq] ?? 0;
+
+        $this->leftIndex  = min(100, $this->index + $leftBoost);
+        $this->rightIndex = min(100, $this->index + $rightBoost);
+
+        $this->leftEarVal  = $intensities[min(4, max(0, round(($this->stress + $this->noise) / 2) - 1))];
         $this->rightEarVal = $intensities[min(4, max(0, round(($this->stress + $this->sleep) / 2) - 2))];
 
+        // Badge y recomendaciones (basadas en índice global)
         if ($this->index >= 70) {
             $this->statusBadge = ['color' => '#E24B4A', 'bg' => '#FCEBEB', 'text' => '#A32D2D', 'label' => 'Condición muy desfavorable', 'desc' => 'Alta probabilidad de resultados no confiables. Se recomienda reprogramar.'];
             $this->recommendations = [
                 ['c' => '#E24B4A', 't' => 'Considerar reprogramar la audiometría para un día de mejor estado.'],
                 ['c' => '#E24B4A', 't' => 'Si se procede, marcar todas las frecuencias como de baja confiabilidad.'],
                 ['c' => '#BA7517', 't' => 'Iniciar con acufenometría antes de cualquier medición de umbral.'],
-                ['c' => '#BA7517', 't' => 'Usar protocolo descendente (de audible hacia abajo) en lugar del ascendente estándar.'],
             ];
-        } else if ($this->index >= 45) {
-            $this->statusBadge = ['color' => '#D85A30', 'bg' => '#FAECE7', 'text' => '#993C1D', 'label' => 'Condición desfavorable', 'desc' => 'El tinnitus puede interferir en frecuencias cercanas a ' . $this->freqSelected . '.'];
+        } elseif ($this->index >= 45) {
+            $this->statusBadge = ['color' => '#D85A30', 'bg' => '#FAECE7', 'text' => '#993C1D', 'label' => 'Condición desfavorable', 'desc' => 'El tinnitus puede interferir en las frecuencias seleccionadas.'];
             $this->recommendations = [
                 ['c' => '#BA7517', 't' => 'Realizar acufenometría al inicio: mapear frecuencia e intensidad exacta del tinnitus.'],
-                ['c' => '#BA7517', 't' => 'En zona de frecuencia ' . $this->freqSelected . ': usar tonos pulsados o modulados en lugar de tono continuo.'],
-                ['c' => '#BA7517', 't' => 'Protocolo descendente en las frecuencias cercanas al tinnitus reportado.'],
-                ['c' => '#639922', 't' => 'Registrar las mediciones con nivel de confianza diferenciado por frecuencia.'],
+                ['c' => '#BA7517', 't' => 'Usar tonos pulsados o modulados en lugar de tono continuo en las zonas afectadas.'],
+                ['c' => '#639922', 't' => 'Registrar nivel de confianza diferenciado por frecuencia.'],
             ];
-        } else if ($this->index >= 25) {
-            $this->statusBadge = ['color' => '#BA7517', 'bg' => '#FAEEDA', 'text' => '#854F0B', 'label' => 'Condición aceptable', 'desc' => 'Proceder con precaución. Documentar las frecuencias de riesgo.'];
+        } elseif ($this->index >= 25) {
+            $this->statusBadge = ['color' => '#BA7517', 'bg' => '#FAEEDA', 'text' => '#854F0B', 'label' => 'Condición aceptable', 'desc' => 'Proceder con precaución. Documentar frecuencias de riesgo.'];
             $this->recommendations = [
-                ['c' => '#639922', 't' => 'Proceder con protocolo estándar pero con atención extra en zona ' . $this->freqSelected . '.'],
-                ['c' => '#639922', 't' => 'Ofrecer pausa entre frecuencias si el paciente siente que el tono "se queda pegado".'],
-                ['c' => '#639922', 't' => 'Documentar en el audiograma las frecuencias potencialmente afectadas.'],
+                ['c' => '#639922', 't' => 'Proceder con protocolo estándar con atención extra en zonas afectadas.'],
+                ['c' => '#639922', 't' => 'Ofrecer pausa entre frecuencias si el paciente siente que el tono se queda pegado.'],
             ];
         } else {
             $this->statusBadge = ['color' => '#1D9E75', 'bg' => '#E1F5EE', 'text' => '#0F6E56', 'label' => 'Condición favorable', 'desc' => 'Buenas condiciones para una audiometría confiable hoy.'];
@@ -89,19 +136,30 @@ new class extends Component
         if (!$this->patientId) return;
 
         TinnitusProfile::create([
-            'patient_id' => $this->patientId,
-            'initiated_by' => Auth::id(),
-            'sleep_quality' => $this->sleep,
-            'stress_level' => $this->stress,
-            'noise_exposure' => $this->noise,
-            'health_state' => $this->health,
-            'alcohol_intake' => $this->alc,
-            'reliability_index' => $this->index,
-            'frequency_perception' => $this->freqSelected,
-            'left_ear_intensity' => $this->leftEarVal,
+            'patient_id'          => $this->patientId,
+            'initiated_by'        => Auth::id(),
+            'affected_ears'       => $this->affectedEars,
+            'sleep_quality'       => $this->sleep,
+            'stress_level'        => $this->stress,
+            'noise_exposure'      => $this->noise,
+            'health_state'        => $this->health,
+            'alcohol_intake'      => $this->alc,
+            'reliability_index'   => $this->index,
+            'frequency_perception'=> $this->leftFreq, // global fallback
+            'left_freq_selected'  => $this->leftFreq,
+            'right_freq_selected' => $this->rightFreq,
+            'left_index'          => $this->leftIndex,
+            'right_index'         => $this->rightIndex,
+            'left_ear_intensity'  => $this->leftEarVal,
             'right_ear_intensity' => $this->rightEarVal,
-            'recommendations' => $this->recommendations,
+            'recommendations'     => $this->recommendations,
         ]);
+
+        Flux::toast(
+            heading: 'Perfil Guardado',
+            text: 'El perfil de tinnitus de hoy ha sido archivado.',
+            variant: 'success'
+        );
 
         $this->dispatch('profile-saved');
     }
@@ -124,43 +182,71 @@ new class extends Component
         .freq-btn { flex: 1; font-size: 12px; padding: 6px 4px; border-radius: var(--border-radius-md); border: 1px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; text-align: center; transition: all .15s; }
         .freq-btn.active { border-color: #5DCAA5; color: #0F6E56; background: #E1F5EE; font-weight: 500; }
         .ear-row { display: flex; gap: 8px; margin-bottom: 14px; }
-        .ear-card { flex: 1; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; }
+        .ear-card { flex: 1; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; cursor: pointer; transition: all .2s; }
+        .ear-card.active { border-color: #1D9E75; border-width: 2px; box-shadow: 0 0 0 1px #1D9E75; }
         .ear-label { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 4px; }
         .ear-val { font-size: 16px; font-weight: 500; color: var(--color-text-primary); }
+        .ear-sub { font-size: 10px; color: var(--color-text-tertiary); margin-top: 4px; }
         .recommendation { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
         .rec-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
         .rec-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
         hr { border: none; border-top: 1px solid var(--color-border-tertiary); margin: 14px 0; }
         button.cta { width: 100%; padding: 12px; border-radius: var(--border-radius-md); border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px; transition: opacity .2s; }
+        .ear-selector { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--color-border-tertiary); padding-bottom: 12px; }
+        .ear-selector button { flex: 1; padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid var(--color-border-tertiary); background: #f1f5f9; color: #64748b; font-weight: 500; }
+        .ear-selector button.active { background: #1D9E75; color: white; border-color: #1D9E75; }
     </style>
 
     <div class="stage-1-container">
         <p style="font-size:11px;color:var(--color-text-tertiary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.06em">Etapa 1: Perfil Tinnitus Pre-audiometría</p>
 
+        <div class="ear-selector">
+            <button type="button" wire:click="setActiveEar('left')" class="{{ $activeEar === 'left' ? 'active' : '' }}">Oído Izquierdo</button>
+            <button type="button" wire:click="setActiveEar('right')" class="{{ $activeEar === 'right' ? 'active' : '' }}">Oído Derecho</button>
+        </div>
+
         <div class="screen">
-            <p class="section-title">Estado del tinnitus hoy</p>
+            <p class="section-title">Resumen por oído (clic para configurar)</p>
             
             <div class="ear-row">
-                <div class="ear-card">
-                    <div class="ear-label">Oído izquierdo</div>
+                <div class="ear-card {{ $activeEar === 'left' ? 'active' : '' }}" wire:click="setActiveEar('left')">
+                    <div class="flex justify-between items-start">
+                        <div class="ear-label">Oído izquierdo</div>
+                        <div class="text-[10px] font-bold {{ $leftIndex >= 45 ? 'text-red-500' : 'text-green-600' }}">{{ $leftIndex }}/100</div>
+                    </div>
                     <div class="ear-val">{{ $leftEarVal }}</div>
+                    <div class="ear-sub">{{ $leftFreq }}</div>
+                    @if($lastLeftMapping)
+                        <div class="ear-sub italic text-[9px]">Último mapeo: {{ $lastLeftMapping }}</div>
+                    @endif
                 </div>
-                <div class="ear-card">
-                    <div class="ear-label">Oído derecho</div>
-                    <div class="ear-val">{{ $rightEarVal }}</div>
-                </div>
-            </div>
 
-            <p class="section-title">Frecuencia percibida</p>
-            <div class="freq-row">
-                <button type="button" wire:click="setFreq('Grave ~500Hz')" class="freq-btn {{ $freqSelected === 'Grave ~500Hz' ? 'active' : '' }}">Grave</button>
-                <button type="button" wire:click="setFreq('Medio ~2kHz')" class="freq-btn {{ $freqSelected === 'Medio ~2kHz' ? 'active' : '' }}">Medio</button>
-                <button type="button" wire:click="setFreq('Agudo ~4kHz')" class="freq-btn {{ $freqSelected === 'Agudo ~4kHz' ? 'active' : '' }}">Agudo</button>
-                <button type="button" wire:click="setFreq('Muy agudo ~8kHz')" class="freq-btn {{ $freqSelected === 'Muy agudo ~8kHz' ? 'active' : '' }}">Muy agudo</button>
+                <div class="ear-card {{ $activeEar === 'right' ? 'active' : '' }}" wire:click="setActiveEar('right')">
+                    <div class="flex justify-between items-start">
+                        <div class="ear-label">Oído derecho</div>
+                        <div class="text-[10px] font-bold {{ $rightIndex >= 45 ? 'text-red-500' : 'text-green-600' }}">{{ $rightIndex }}/100</div>
+                    </div>
+                    <div class="ear-val">{{ $rightEarVal }}</div>
+                    <div class="ear-sub">{{ $rightFreq }}</div>
+                    @if($lastRightMapping)
+                        <div class="ear-sub italic text-[9px]">Último mapeo: {{ $lastRightMapping }}</div>
+                    @endif
+                </div>
             </div>
 
             <hr>
-            <p class="section-title">Factores de contexto</p>
+
+            <p class="section-title">Configuración: {{ $activeEar === 'left' ? 'Oído Izquierdo' : 'Oído Derecho' }}</p>
+
+            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:10px">Frecuencia percibida en este oído</p>
+            <div class="freq-row">
+                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Grave ~500Hz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Grave ~500Hz' ? 'active' : '' }}">Grave</button>
+                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Medio ~2kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Medio ~2kHz' ? 'active' : '' }}">Medio</button>
+                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Agudo ~4kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Agudo ~4kHz' ? 'active' : '' }}">Agudo</button>
+                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Muy agudo ~8kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Muy agudo ~8kHz' ? 'active' : '' }}">Muy agudo</button>
+            </div>
+
+            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:20px">Factores sistémicos (aplica a ambos)</p>
 
             <div class="row">
                 <label>Calidad de sueño</label>

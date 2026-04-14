@@ -60,9 +60,7 @@ new class extends Component
                     Mapeador
                 </flux:navbar.item>
 
-                <flux:navbar.item icon="adjustments-vertical" :href="route('patients.tinnitus-calibrator', $patientId)" :current="request()->routeIs('patients.tinnitus-calibrator')" wire:navigate>
-                    Calibrador
-                </flux:navbar.item>
+
             </flux:navbar>
         </div>
     </div>

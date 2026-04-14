@@ -33,11 +33,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return view('stages.tinnitus-mapping', ['patientId' => $patientId]);
         })->name('tinnitus-mapping');
 
-        // 4. Tinnitus Calibrator
-        Route::get('/tinnitus-calibrator', function ($patientId) {
-            return view('stages.tinnitus-calibrator', ['patientId' => $patientId]);
-        })->name('tinnitus-calibrator');
-
         // 5. Tinnitus Profile
         Route::get('/tinnitus-profile', function ($patientId) {
             return view('stages.tinnitus-profile', ['patientId' => $patientId]);

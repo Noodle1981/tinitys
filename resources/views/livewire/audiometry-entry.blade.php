@@ -4,6 +4,7 @@ use Livewire\Volt\Component;
 use App\Models\Patient;
 use App\Models\PatientSession;
 use App\Models\AudiometryValue;
+use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 
 new class extends Component
@@ -100,7 +101,7 @@ new class extends Component
         // Opcional: Cargar inmediatamente la sesión recién creada como solo lectura
         $this->updatedSelectedSessionId($session->id);
 
-        \Flux::toast(
+        Flux::toast(
             heading: 'Audiometría Guardada',
             text: 'Los resultados se han archivado correctamente.',
             variant: 'success'

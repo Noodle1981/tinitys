@@ -9,12 +9,15 @@ class TinnitusMapping extends Model
     protected $fillable = [
         'patient_id',
         'initiated_by',
-        'layers_config',
+        'ear',                  // 'OI', 'OD', 'ambos'
+        'left_layers_config',
+        'right_layers_config',
         'master_volume',
     ];
 
     protected $casts = [
-        'layers_config' => 'array',
+        'left_layers_config'  => 'array',
+        'right_layers_config' => 'array',
     ];
 
     public function patient()
