@@ -60,6 +60,10 @@ new class extends Component
                     Mapeador
                 </flux:navbar.item>
 
+                <flux:navbar.item icon="presentation-chart-line" :href="route('patients.consultation', $patientId)" :current="request()->routeIs('patients.consultation')" wire:navigate>
+                    Gráfica de Tinnitus
+                </flux:navbar.item>
+
 
             </flux:navbar>
         </div>

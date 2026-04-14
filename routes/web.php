@@ -37,6 +37,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/tinnitus-profile', function ($patientId) {
             return view('stages.tinnitus-profile', ['patientId' => $patientId]);
         })->name('tinnitus-profile');
+        // 6. Digital Twin / Consultation Dashboard
+        Route::get('/consultation', function ($patientId) {
+            return view('stages.consultation', ['patientId' => $patientId]);
+        })->name('consultation');
     });
 
     Route::get('/report/{patientId}', function ($patientId) {

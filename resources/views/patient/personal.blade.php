@@ -1,7 +1,14 @@
 <x-layouts::patient :patientId="$patientId" title="Perfil del Paciente">
     <div class="space-y-6">
         <div class="bg-white dark:bg-zinc-900 shadow-sm sm:rounded-lg p-8 border border-zinc-200 dark:border-zinc-700">
-            <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-6">Datos Personales e Identificación</h2>
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Datos Personales e Identificación</h2>
+                <a href="{{ route('patients.consultation', $patientId) }}" 
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded-lg font-bold text-sm shadow-sm transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Modo Consulta / Gemelo Digital
+                </a>
+            </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
