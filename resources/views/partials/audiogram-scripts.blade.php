@@ -4,6 +4,7 @@
 Alpine.data('audiogramEntry', (initialData = null) => ({
     activeEar: 'right',
     audioData: initialData || { right: {}, left: {} },
+    isReadOnly: false,
     hist: [],
     hov: null,
     canvas: null,
@@ -25,6 +26,15 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
         this.ctx = this.canvas.getContext('2d');
         this.doResize();
         window.addEventListener('resize', () => { this.doResize(); this.draw(); });
+        
+        // Listener para carga de datos históricos
+        window.addEventListener('load-audiogram', (e) => {
+            this.audioData = e.detail.data || { right: {}, left: {} };
+            this.isReadOnly = e.detail.readOnly || false;
+            this.hist = [];
+            this.draw();
+        });
+
         this.draw();
     },
 
@@ -73,6 +83,8 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
     },
 
     onClick(e) {
+        if (this.isReadOnly) return; // Bloquear edición
+
         const [cx, cy] = this.evCoords(e);
         if (!this.inPlot(cx, cy)) return;
         const freq = this.snapFreq(cx);
@@ -253,6 +265,8 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
 
     drawXSym(x, y, col) {
         const s = 6.5;
+        this.ctx.beginPath(); this.ctx.arc(x, y, 7, 0, Math.PI * 2); // Círculo de fondo para legibilidad
+        this.ctx.fillStyle = 'rgba(255,255,255,0.92)'; this.ctx.fill();
         this.ctx.beginPath(); this.ctx.moveTo(x - s, y - s); this.ctx.lineTo(x + s, y + s);
         this.ctx.moveTo(x + s, y - s); this.ctx.lineTo(x - s, y + s);
         this.ctx.strokeStyle = col; this.ctx.lineWidth = 2.5; this.ctx.stroke();
@@ -263,13 +277,14 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
     },
 
     undoLast() {
-        if (!this.hist.length) return;
+        if (this.isReadOnly || !this.hist.length) return;
         this.audioData = this.hist.pop();
         this.draw();
         this.$dispatch('audiogram-updated', this.audioData);
     },
 
     clearEar() {
+        if (this.isReadOnly) return;
         this.hist.push(JSON.parse(JSON.stringify(this.audioData)));
         this.audioData[this.activeEar] = {};
         this.draw();
@@ -277,6 +292,7 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
     },
 
     clearAll() {
+        if (this.isReadOnly) return;
         this.hist.push(JSON.parse(JSON.stringify(this.audioData)));
         this.audioData = { right: {}, left: {} };
         this.draw();

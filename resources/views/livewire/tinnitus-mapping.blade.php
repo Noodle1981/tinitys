@@ -15,10 +15,10 @@ new class extends Component
         $this->patientId = $patientId;
         // Initialize default layers if none provided
         $this->layersConfig = [
-            ['id' => 'ranita', 'name' => 'Ranita / grillo', 'desc' => 'pulsante rítmico', 'type' => 'pulse', 'freq' => 78, 'vol' => 55, 'speed' => 52, 'color' => '#1D9E75'],
-            ['id' => 'viento', 'name' => 'Viento', 'desc' => 'ruido continuo', 'type' => 'noise', 'freq' => 38, 'vol' => 42, 'speed' => null, 'color' => '#378ADD'],
-            ['id' => 'tono', 'name' => 'Uuuuuuu', 'desc' => 'tono puro constante', 'type' => 'pure', 'freq' => 55, 'vol' => 50, 'speed' => null, 'color' => '#7F77DD'],
-            ['id' => 'sube', 'name' => 'Sube y baja', 'desc' => 'oscilante lento', 'type' => 'sweep', 'freq' => 62, 'vol' => 40, 'speed' => 28, 'color' => '#BA7517'],
+            ['id' => 'ranita', 'name' => 'Tono Agudo', 'desc' => 'pulsante rítmico', 'type' => 'pulse', 'freq' => 78, 'vol' => 55, 'speed' => 52, 'color' => '#1D9E75'],
+            ['id' => 'viento', 'name' => 'Ruido de Banda Ancha', 'desc' => 'ruido continuo', 'type' => 'noise', 'freq' => 38, 'vol' => 42, 'speed' => null, 'color' => '#378ADD'],
+            ['id' => 'tono', 'name' => 'Tono Grave', 'desc' => 'tono puro constante', 'type' => 'pure', 'freq' => 55, 'vol' => 50, 'speed' => null, 'color' => '#7F77DD'],
+            ['id' => 'sube', 'name' => 'Tono Oscilante', 'desc' => 'oscilante lento', 'type' => 'sweep', 'freq' => 62, 'vol' => 40, 'speed' => 28, 'color' => '#BA7517'],
         ];
     }
 
@@ -44,7 +44,7 @@ new class extends Component
         .card.is-on { border-color: #1D9E75; border-width: 2px; }
         .lh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .lname { font-size: 14px; font-weight: 600; color: var(--color-text-primary); flex: 1; }
+        .lname { font-size: 14px; font-weight: 600; color: var(--color-text-primary); flex: 1; display: flex; align-items: center; gap: 6px; }
         .ldesc { font-size: 11px; color: var(--color-text-tertiary); }
         .cr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
         .cr label { font-size: 12px; color: var(--color-text-secondary); width: 85px; flex-shrink: 0; }
@@ -70,7 +70,13 @@ new class extends Component
                     <div class="card" :class="activeNodes[l.id] ? 'is-on' : ''">
                         <div class="lh">
                             <div class="ldot" :style="'background:'+l.color"></div>
-                            <div class="lname" x-text="l.name"></div>
+                            <div class="lname">
+                                <template x-if="l.id === 'ranita'"><flux:icon.sparkles variant="mini" class="size-4 opacity-70" /></template>
+                                <template x-if="l.id === 'viento'"><flux:icon.cloud variant="mini" class="size-4 opacity-70" /></template>
+                                <template x-if="l.id === 'tono'"><flux:icon.bolt variant="mini" class="size-4 opacity-70" /></template>
+                                <template x-if="l.id === 'sube'"><flux:icon.presentation-chart-line variant="mini" class="size-4 opacity-70" /></template>
+                                <span x-text="l.name"></span>
+                            </div>
                             <div class="ldesc" x-text="l.desc"></div>
                             <button @click="toggleLayer(l.id)" class="onbtn" 
                                     :style="activeNodes[l.id] ? 'background:'+l.color+'11; color:'+l.color+'; border-color:'+l.color : ''"

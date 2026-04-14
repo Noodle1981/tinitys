@@ -17,7 +17,7 @@
             </button>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2" x-show="!isReadOnly">
             <button type="button" @click="undoLast()" class="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">↩ Deshacer</button>
             <button type="button" @click="clearEar()" class="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Limpiar oído</button>
             <button type="button" @click="clearAll()" class="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-50">Limpiar todo</button>
@@ -50,7 +50,7 @@
     @include('partials.audiogram-scripts')
 
     {{-- Botón de guardado oculto o integrado, se llamará desde el componente padre o directamente --}}
-    <div class="mt-8 flex justify-end">
+    <div class="mt-8 flex justify-end" x-show="!isReadOnly">
         <button type="button" @click="save()" class="px-6 py-2.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg font-bold shadow-sm hover:opacity-90 transition-all flex items-center gap-2">
             <flux:icon.check-circle variant="mini" />
             Guardar Resultados de Audiometría

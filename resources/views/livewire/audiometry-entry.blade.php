@@ -12,6 +12,7 @@ new class extends Component
     public $noise_exposure = 'no';
     public $acufenos = false;
     public $vertigos = false;
+    public $selectedSessionId = 'new';
     public $initialData = ['right' => [], 'left' => []];
 
     public function mount($patientId)
@@ -19,30 +20,48 @@ new class extends Component
         $this->patientId = $patientId;
         $patient = Patient::findOrFail($patientId);
         
-        // Cargar últimos datos clínicos
+        // Cargar últimos datos clínicos básicos
         $this->noise_exposure = $patient->noise_exposure ? 'si' : 'no';
         $this->acufenos = (bool)$patient->tinnitus_symptom;
         $this->vertigos = (bool)$patient->vertigo_symptom;
 
-        // Cargar datos del último audiograma para facilitar la edición
-        $latestSession = $patient->sessions()
-            ->where('type', 'doctor')
-            ->latest()
-            ->with(['audiometryValues' => function($q) {
-                $q->where('type', 'air');
-            }])
-            ->first();
+        // Por requerimiento, las nuevas evaluaciones comienzan vacías
+        $this->initialData = ['right' => [], 'left' => []];
+    }
 
-        if ($latestSession) {
-            foreach ($latestSession->audiometryValues as $val) {
-                $ear = ($val->ear === 'OD' || $val->ear === 'right') ? 'right' : 'left';
-                $this->initialData[$ear][$val->frequency] = $val->db_level;
-            }
+    public function with()
+    {
+        return [
+            'sessions' => PatientSession::where('patient_id', $this->patientId)
+                ->where('type', 'doctor')
+                ->latest()
+                ->get()
+        ];
+    }
+
+    public function updatedSelectedSessionId($id)
+    {
+        if ($id === 'new') {
+            $this->dispatch('load-audiogram', data: ['right' => [], 'left' => []], readOnly: false);
+            return;
         }
+
+        $session = PatientSession::with('audiometryValues')->findOrFail($id);
+        $data = ['right' => [], 'left' => []];
+
+        foreach ($session->audiometryValues as $val) {
+            $ear = ($val->ear === 'OD' || $val->ear === 'right') ? 'right' : 'left';
+            $data[$ear][$val->frequency] = $val->db_level;
+        }
+
+        $this->dispatch('load-audiogram', data: $data, readOnly: true);
     }
 
     public function save($data)
     {
+        // Solo permitir guardado si estamos en modo "Nueva"
+        if ($this->selectedSessionId !== 'new') return;
+
         $patient = Patient::findOrFail($this->patientId);
 
         // Actualizar perfil clínico del paciente
@@ -52,44 +71,38 @@ new class extends Component
             'vertigo_symptom' => $this->vertigos,
         ]);
 
-        // Crear una nueva sesión (para archivado histórico)
+        // Crear una nueva sesión
         $session = $patient->sessions()->create([
             'type' => 'doctor',
-            'initiated_by' => Auth::id(),
             'metadata' => [
+                'initiated_by' => Auth::id(),
                 'interface' => 'audiogram-canvas-v1',
                 'timestamp' => now()->toDateTimeString(),
             ],
         ]);
 
-        // Guardar Oído Derecho (OD)
-        if (isset($data['right'])) {
-            foreach ($data['right'] as $freq => $db) {
-                $session->audiometryValues()->create([
-                    'ear' => 'OD', 
-                    'frequency' => (int)$freq, 
-                    'type' => 'air', 
-                    'db_level' => (int)$db
-                ]);
+        foreach (['right', 'left'] as $earKey) {
+            if (isset($data[$earKey])) {
+                foreach ($data[$earKey] as $freq => $db) {
+                    $session->audiometryValues()->create([
+                        'ear' => $earKey === 'right' ? 'OD' : 'OI',
+                        'frequency' => (int)$freq,
+                        'type' => 'air',
+                        'db_level' => (int)$db
+                    ]);
+                }
             }
         }
 
-        // Guardar Oído Izquierdo (OI)
-        if (isset($data['left'])) {
-            foreach ($data['left'] as $freq => $db) {
-                $session->audiometryValues()->create([
-                    'ear' => 'OI', 
-                    'frequency' => (int)$freq, 
-                    'type' => 'air', 
-                    'db_level' => (int)$db
-                ]);
-            }
-        }
-
+        $this->selectedSessionId = $session->id;
         $this->dispatch('audiometry-saved');
-        flux()->toast(
+        
+        // Opcional: Cargar inmediatamente la sesión recién creada como solo lectura
+        $this->updatedSelectedSessionId($session->id);
+
+        \Flux::toast(
             heading: 'Audiometría Guardada',
-            text: 'Los resultados se han archivado en la ficha del paciente.',
+            text: 'Los resultados se han archivado correctamente.',
             variant: 'success'
         );
     }
@@ -98,9 +111,27 @@ new class extends Component
 <div class="audiometry-entry-root">
     <div class="space-y-6">
         {{-- Header informativo --}}
-        <div>
-            <h2 class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Evaluación de Audiometría Tonal</h2>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">Ingreso de umbrales por conducción aérea. Cada guardado genera un nuevo registro histórico.</p>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Evaluación de Audiometría Tonal</h2>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">Ingreso de umbrales por conducción aérea.</p>
+            </div>
+            
+            {{-- Selector de Historial --}}
+            <div class="w-full md:w-72">
+                <flux:field>
+                    <flux:label icon="clock">Historial de Evaluaciones</flux:label>
+                    <flux:select wire:model.live="selectedSessionId" placeholder="Seleccionar registro...">
+                        <option value="new">➕ Nueva Evaluación (Vacía)</option>
+                        <hr class="my-1 border-zinc-200">
+                        @foreach($sessions as $session)
+                            <option value="{{ $session->id }}">
+                                📅 {{ $session->created_at->format('d/m/Y H:i') }}
+                            </option>
+                        @endforeach
+                    </flux:select>
+                </flux:field>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -112,7 +143,7 @@ new class extends Component
                     <div class="space-y-4">
                         <flux:field>
                             <flux:label>Exposición a ruido</flux:label>
-                            <flux:select wire:model="noise_exposure">
+                            <flux:select wire:model="noise_exposure" :disabled="$selectedSessionId !== 'new'">
                                 <option value="no">Sin exposición</option>
                                 <option value="si">Exposición laboral/recreativa</option>
                             </flux:select>
@@ -120,20 +151,30 @@ new class extends Component
 
                         <div class="space-y-2">
                             <flux:label>Síntomas reportados</flux:label>
-                            <flux:checkbox wire:model="acufenos" label="Acúfenos / Tinnitus" />
-                            <flux:checkbox wire:model="vertigos" label="Vértigos / Inestabilidad" />
+                            <flux:checkbox wire:model="acufenos" label="Acúfenos / Tinnitus" :disabled="$selectedSessionId !== 'new'" />
+                            <flux:checkbox wire:model="vertigos" label="Vértigos / Inestabilidad" :disabled="$selectedSessionId !== 'new'" />
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50">
                     <h3 class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase mb-2">Instrucciones</h3>
-                    <ul class="text-xs text-blue-800 dark:text-blue-300 space-y-1.5 list-disc pl-4">
-                        <li>Seleccioná el oído <b>Derecho</b> o <b>Izquierdo</b>.</li>
-                        <li>Hacé clic en la grilla para marcar el umbral.</li>
-                        <li>Clic en un punto existente para eliminarlo.</li>
-                        <li>Los puntos se autoconectan por frecuencia.</li>
-                    </ul>
+                    <div class="text-xs text-blue-800 dark:text-blue-300 space-y-2">
+                        @if($selectedSessionId === 'new')
+                            <p>Estás en modo <b>Edición</b>:</p>
+                            <ul class="list-disc pl-4 space-y-1">
+                                <li>Seleccioná el oído.</li>
+                                <li>Hacé clic para marcar umbral.</li>
+                                <li>Clic de nuevo para borrar.</li>
+                            </ul>
+                        @else
+                            <p>Estás viendo un <b>Registro Histórico</b>:</p>
+                            <ul class="list-disc pl-4 space-y-1">
+                                <li>El gráfico es de solo lectura.</li>
+                                <li>Para una nueva evaluación, selecciona "Nueva Evaluación" en el desplegable de arriba.</li>
+                            </ul>
+                        @endif
+                    </div>
                 </div>
             </div>
 
