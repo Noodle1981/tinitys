@@ -13,17 +13,40 @@
         leftLayers: initialLeftLayers,
         rightLayers: initialRightLayers,
         masterVol: initialMasterVol,
+        evaluationScope: 'ambos',
 
-        freqFromSlider(v) { return Math.round(250 * Math.pow(32, v / 100)); },
+        freqFromSlider(v) {
+            const minLog = Math.log(125);
+            const scale = (Math.log(8000) - minLog) / 100;
+            return Math.round(Math.exp(minLog + scale * v));
+        },
         fmtFreq(f) { return f >= 1000 ? (f / 1000).toFixed(1) + ' kHz' : f + ' Hz'; },
         spdFromSlider(v) { return parseFloat((0.3 * Math.pow(40, v / 100)).toFixed(1)); },
 
-        initApp() {
+        initApp(scope = 'ambos') {
+            this.evaluationScope = scope;
+            if (scope === 'OD') this.activeEar = 'right';
+            if (scope === 'OI') this.activeEar = 'left';
             this.initialized = true;
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = this.masterVol / 100;
-            this.masterGain.connect(this.ctx.destination);
+            
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = this.masterVol / 100;
+                this.masterGain.connect(this.ctx.destination);
+            } else {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+        },
+
+        resetScope() {
+            this.initialized = false;
+            // Detener temporalmente los ruidos
+            ['ranita', 'viento', 'tono', 'sube'].forEach(id => {
+                this.stopLayer('left', id);
+                this.stopLayer('right', id);
+            });
+            if (this.ctx && this.ctx.state === 'running') this.ctx.suspend();
         },
 
         makeNoiseBuf() {
@@ -138,7 +161,18 @@
         },
 
         saveProfile() {
-            this.$wire.save(this.leftLayers, this.rightLayers, this.masterVol);
+            let enrich = (l) => {
+                let realFreq = this.freqFromSlider(l.freq);
+                return {
+                    ...l,
+                    // Agrega el valor clínico real para los Gemelos Digitales
+                    clinical_hz: realFreq,
+                    clinical_hz_str: this.fmtFreq(realFreq),
+                    clinical_speed_hz: l.speed !== null ? this.spdFromSlider(l.speed) : null
+                };
+            };
+            
+            this.$wire.save(this.evaluationScope, this.leftLayers.map(enrich), this.rightLayers.map(enrich), this.masterVol);
         },
 
         startWaveAnim(ear, layer, canvasEl) {

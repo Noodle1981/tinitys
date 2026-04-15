@@ -244,22 +244,48 @@ Alpine.data('audiogramEntry', (initialData = null) => ({
             
         if (freqs.length === 0) return;
 
-        // FASE 1: DIBUJAR LA LÍNEA QUE CONECTA LOS PUNTOS
+        // FASE 1: DIBUJAR LÍNEAS (CON DETECCIÓN DE SALTOS/ISLAS DE AUDICIÓN)
         ctx.beginPath();
         ctx.strokeStyle = color;
         ctx.lineWidth = 2.5;
 
         for (let i = 0; i < freqs.length; i++) {
-            const x = this.getX(freqs[i]);
-            const y = this.getY(earData[freqs[i]]);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            const hz = freqs[i];
+            const x = this.getX(hz);
+            const y = this.getY(earData[hz]);
+            
+            if (i === 0) {
+                // Primer punto: apoyamos el lápiz
+                ctx.moveTo(x, y); 
+            } else {
+                const prevHz = freqs[i - 1];
+                
+                // Verificamos si hay algún "hueco" de frecuencia principal que se haya saltado
+                let hasGap = false;
+                for (let f of this.FREQ_SHOW) {
+                    if (f > prevHz && f < hz) {
+                        hasGap = true;
+                        break;
+                    }
+                }
+
+                if (hasGap) {
+                    // Si se saltó una frecuencia principal (ej. de 500 a 2k falta 1000)
+                    // LEVANTAMOS EL LÁPIZ y lo ponemos en la nueva coordenada sin trazar línea
+                    ctx.moveTo(x, y);
+                } else {
+                    // Si son frecuencias continuas en nuestra evaluación, trazamos la línea normal
+                    ctx.lineTo(x, y); 
+                }
+            }
         }
         ctx.stroke();
 
         // FASE 2: DIBUJAR LOS SÍMBOLOS (X / O)
         for (let i = 0; i < freqs.length; i++) {
-            const x = this.getX(freqs[i]);
-            const y = this.getY(earData[freqs[i]]);
+            const hz = freqs[i];
+            const x = this.getX(hz);
+            const y = this.getY(earData[hz]);
             if (earType === 'right') this.drawO(x, y, color); else this.drawXSym(x, y, color);
         }
     },

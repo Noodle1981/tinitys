@@ -17,11 +17,19 @@ new class extends Component
     public $activeEar = 'left';
 
     // Sliders globales (sistémicos, aplican a ambos oídos)
-    public $sleep = 2;
+    public $sleep = 1;
     public $stress = 3;
     public $noise = 4;
-    public $health = 3;
-    public $alc = 1;
+    public $health = 1;
+    
+    // NUEVO: Cansancio físico
+    public $fatigue = 1; 
+
+    // NUEVO: Síntomas físicos (Checkboxes)
+    public $alc = false;
+    public $puna = false;
+    public $cold = false;
+    public $throat = false;
 
     // Frecuencia percibida por oído
     public $leftFreq = 'Medio ~2kHz';
@@ -86,9 +94,21 @@ new class extends Component
     {
         $intensities = ['Mínimo', 'Leve', 'Moderado', 'Intenso', 'Muy intenso'];
 
-        // Índice global (refleja condición general del paciente hoy)
-        $raw = ($this->stress * 20) + ((5 - $this->sleep) * 20) + ($this->noise * 12) + ((5 - $this->health) * 12) + ($this->alc * 16);
-        $this->index = min(100, round($raw * 100 / 300));
+        // CÁLCULO ACTUALIZADO: Sumamos los nuevos factores
+        // Cada checkbox verdadero suma puntos extra de penalización
+        $raw = ($this->stress * 20) 
+             + (($this->sleep - 1) * 20) 
+             + ($this->noise * 12) 
+             + (($this->health - 1) * 12)  // Salud invertida: 1 = Bueno, 5 = Malo
+             + ($this->alc ? 30 : 0)       // Alcohol pasa a boolean (+30 pts)
+             + ($this->fatigue * 15)       // Cansancio suma hasta 75 pts
+             + ($this->puna ? 25 : 0)      // La puna castiga 25 pts
+             + ($this->cold ? 20 : 0)      // Resfrío castiga 20 pts
+             + ($this->throat ? 15 : 0);   // Dolor de garganta castiga 15 pts
+
+        // Como agregamos más variables, el máximo "raw" posible subió a ~500. 
+        // Dividimos por 500 para normalizar a escala de 0 a 100.
+        $this->index = min(100, round($raw * 100 / 500));
 
         // Índice por oído (mismo cálculo base + ajuste por frecuencia percibida)
         $freqBoost = ['Grave ~500Hz' => 0, 'Medio ~2kHz' => 4, 'Agudo ~4kHz' => 8, 'Muy agudo ~8kHz' => 10];
@@ -99,7 +119,7 @@ new class extends Component
         $this->rightIndex = min(100, $this->index + $rightBoost);
 
         $this->leftEarVal  = $intensities[min(4, max(0, round(($this->stress + $this->noise) / 2) - 1))];
-        $this->rightEarVal = $intensities[min(4, max(0, round(($this->stress + $this->sleep) / 2) - 2))];
+        $this->rightEarVal = $intensities[min(4, max(0, round(($this->stress + $this->sleep) / 2) - 1))];
 
         // Badge y recomendaciones (basadas en índice global)
         if ($this->index >= 70) {
@@ -110,17 +130,17 @@ new class extends Component
                 ['c' => '#BA7517', 't' => 'Iniciar con acufenometría antes de cualquier medición de umbral.'],
             ];
         } elseif ($this->index >= 45) {
-            $this->statusBadge = ['color' => '#D85A30', 'bg' => '#FAECE7', 'text' => '#993C1D', 'label' => 'Condición desfavorable', 'desc' => 'El tinnitus puede interferir en las frecuencias seleccionadas.'];
+            $this->statusBadge = ['color' => '#D85A30', 'bg' => '#FAECE7', 'text' => '#993C1D', 'label' => 'Condición desfavorable', 'desc' => 'El tinnitus y los síntomas físicos pueden interferir gravemente.'];
             $this->recommendations = [
-                ['c' => '#BA7517', 't' => 'Realizar acufenometría al inicio: mapear frecuencia e intensidad exacta del tinnitus.'],
-                ['c' => '#BA7517', 't' => 'Usar tonos pulsados o modulados en lugar de tono continuo en las zonas afectadas.'],
-                ['c' => '#639922', 't' => 'Registrar nivel de confianza diferenciado por frecuencia.'],
+                ['c' => '#BA7517', 't' => 'Realizar acufenometría al inicio: mapear frecuencia e intensidad exacta.'],
+                ['c' => '#BA7517', 't' => 'Chequear permeabilidad de la Trompa de Eustaquio debido a congestión.'],
+                ['c' => '#639922', 't' => 'Usar tonos pulsados o modulados en lugar de tono continuo.'],
             ];
         } elseif ($this->index >= 25) {
-            $this->statusBadge = ['color' => '#BA7517', 'bg' => '#FAEEDA', 'text' => '#854F0B', 'label' => 'Condición aceptable', 'desc' => 'Proceder con precaución. Documentar frecuencias de riesgo.'];
+            $this->statusBadge = ['color' => '#BA7517', 'bg' => '#FAEEDA', 'text' => '#854F0B', 'label' => 'Condición aceptable', 'desc' => 'Proceder con precaución. Documentar factores de riesgo.'];
             $this->recommendations = [
                 ['c' => '#639922', 't' => 'Proceder con protocolo estándar con atención extra en zonas afectadas.'],
-                ['c' => '#639922', 't' => 'Ofrecer pausa entre frecuencias si el paciente siente que el tono se queda pegado.'],
+                ['c' => '#639922', 't' => 'Ofrecer pausa entre frecuencias si el paciente siente fatiga.'],
             ];
         } else {
             $this->statusBadge = ['color' => '#1D9E75', 'bg' => '#E1F5EE', 'text' => '#0F6E56', 'label' => 'Condición favorable', 'desc' => 'Buenas condiciones para una audiometría confiable hoy.'];
@@ -144,6 +164,10 @@ new class extends Component
             'noise_exposure'      => $this->noise,
             'health_state'        => $this->health,
             'alcohol_intake'      => $this->alc,
+            'fatigue_level'       => $this->fatigue,
+            'has_puna'            => $this->puna,
+            'has_cold'            => $this->cold,
+            'has_throat_pain'     => $this->throat,
             'reliability_index'   => $this->index,
             'frequency_perception'=> $this->leftFreq, // global fallback
             'left_freq_selected'  => $this->leftFreq,
@@ -195,6 +219,12 @@ new class extends Component
         .ear-selector { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--color-border-tertiary); padding-bottom: 12px; }
         .ear-selector button { flex: 1; padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid var(--color-border-tertiary); background: #f1f5f9; color: #64748b; font-weight: 500; }
         .ear-selector button.active { background: #1D9E75; color: white; border-color: #1D9E75; }
+        
+        /* Nuevos estilos para los checkboxes */
+        .checkbox-group { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; margin:0;}
+        .checkbox-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #1D9E75; cursor: pointer; }
+        .checkbox-row span { font-size: 13px; color: var(--color-text-secondary); }
     </style>
 
     <div class="stage-1-container">
@@ -249,7 +279,7 @@ new class extends Component
             <p class="section-title" style="text-transform:none; font-size:12px; margin-top:20px">Factores sistémicos (aplica a ambos)</p>
 
             <div class="row">
-                <label>Calidad de sueño</label>
+                <label>Falta de sueño</label>
                 <input type="range" min="1" max="5" step="1" wire:model.live="sleep">
                 <span class="val">{{ $sleep }}/5</span>
             </div>
@@ -268,10 +298,35 @@ new class extends Component
                 <input type="range" min="1" max="5" step="1" wire:model.live="health">
                 <span class="val">{{ $health }}/5</span>
             </div>
+
+            <!-- NUEVO SLIDER: Cansancio Físico -->
             <div class="row">
-                <label>Alcohol últimas 24hs</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="alc">
-                <span class="val">{{ $alc }}/5</span>
+                <label>Cansancio físico</label>
+                <input type="range" min="1" max="5" step="1" wire:model.live="fatigue">
+                <span class="val">{{ $fatigue }}/5</span>
+            </div>
+
+            <!-- NUEVA SECCIÓN: Tildes de síntomas físicos -->
+            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:20px; color:var(--color-text-primary); font-weight:600;">
+                Síntomas físicos (Marcar si presenta)
+            </p>
+            <div class="checkbox-group">
+                <label class="checkbox-row">
+                    <input type="checkbox" wire:model.live="alc">
+                    <span>Consumo de Alcohol / Resaca</span>
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" wire:model.live="puna">
+                    <span>Sensación de Puna / Mal de altura</span>
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" wire:model.live="cold">
+                    <span>Resfrío o Congestión nasal</span>
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" wire:model.live="throat">
+                    <span>Dolor de garganta / Infección</span>
+                </label>
             </div>
         </div>
 
@@ -294,9 +349,33 @@ new class extends Component
                 @endforeach
             </div>
             
-            <button wire:click="save" class="cta" style="background:#1D9E75; color:white">
+            <button x-data x-on:click="$flux.modal('confirm-save-profile').show()" class="cta" style="background:#1D9E75; color:white; width: 100%; margin-top: 12px;">
                 Guardar Perfil de Hoy
             </button>
         </div>
     </div>
+
+    <!-- Cartel de Confirmación Bonito -->
+    <flux:modal name="confirm-save-profile" class="md:w-96">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">Guardar Perfil de Tinnitus</flux:heading>
+                <flux:subheading>
+                    ¿Deseas guardar definitivamente el perfil clínico de hoy en la base de datos del paciente?
+                </flux:subheading>
+            </div>
+
+            <div class="flex gap-2">
+                <flux:spacer />
+
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancelar</flux:button>
+                </flux:modal.close>
+
+                <flux:button wire:click="save" x-on:click="$flux.modal('confirm-save-profile').close()" style="background-color: #1D9E75; color: white; border-color: #1D9E75;">
+                    Sí, Guardar Perfil
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

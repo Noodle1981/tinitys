@@ -1,0 +1,148 @@
+¡Lo que estás viendo en esa imagen está clínicamente PERFECTO y te explico por qué!
+Ese sombreado que notas (que en realidad son columnas o franjas verticales de color rojo claro y azul claro) es exactamente la forma correcta de representar el Tinnitus en un audiograma profesional.
+¿Por qué se grafica como una "columna" de sombra y no como un punto?
+En audiología, a esto se le llama "Zona de Enmascaramiento" (Masking Zone).
+El tinnitus no es un "punto" en el espacio; es un ruido interno que contamina toda una frecuencia completa.
+Si miras la imagen que enviaste:
+Las líneas con X (azul) y Círculos (rojo) representan hasta dónde escuchas los sonidos externos (la audiometría clásica).
+Las columnas sombreadas indican: "¡CUIDADO DOCTOR! En esta franja vertical (ej. 4000 Hz), el paciente tiene su zumbido interno".
+El inmenso valor para el Audioprotesista:
+Cuando el doctor vea este gráfico, dirá: "Ah, el paciente marcó que no escucha bien en los 4000 Hz, pero veo una columna roja ahí. Eso significa que su propio tinnitus tapó mi pitido del audiómetro. Su pérdida real no es tan grave, no debo subirle el volumen al máximo en esa zona del audífono o lo voy a aturdir".
+¿Cómo asegurar que este gráfico funcione perfectamente? (El Script)
+Como en el código que me pasaste falta el archivo @include('partials.consultation-scripts'), he escrito el código JavaScript exacto con Chart.js para que esas columnas (sombras) se dibujen dinámicamente según la información del Gemelo Digital.
+Crea o edita tu archivo resources/views/partials/consultation-scripts.blade.php y pega esto:
+code
+Html
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function initConsultationChart(container, payload) {
+    const canvas = container.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // 1. Preparar datos de Audiometría
+    const parseAudioData = (dataArray) => {
+        return dataArray.map(item => ({
+            x: item.frecuencia_hz,
+            y: item.umbral_db
+        })).sort((a, b) => a.x - b.x); // Ordenar por frecuencia
+    };
+
+    const dataOD = parseAudioData(payload.audiometry.OD);
+    const dataOI = parseAudioData(payload.audiometry.OI);
+
+    // 2. Extraer frecuencias de Tinnitus para las "Sombras"
+    const getTinnitusHz = (zonesArray) => zonesArray.map(z => z.clinical_hz);
+    const tinnitusOD = getTinnitusHz(payload.tinnitus_zones.OD);
+    const tinnitusOI = getTinnitusHz(payload.tinnitus_zones.OI);
+
+    // 3. Plugin Personalizado para dibujar las Columnas Sombreadas
+    const tinnitusZonesPlugin = {
+        id: 'tinnitusZones',
+        beforeDatasetsDraw(chart, args, pluginOptions) {
+            const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
+            
+            const drawZone = (hz, color, label) => {
+                const xPos = x.getPixelForValue(hz);
+                // Si la frecuencia está dentro del gráfico
+                if (xPos >= left && xPos <= right) {
+                    ctx.save();
+                    // Dibujar la columna vertical semi-transparente
+                    ctx.fillStyle = color;
+                    ctx.fillRect(xPos - 15, top, 30, bottom - top); // 30px de ancho
+                    
+                    // Escribir el texto en la parte superior
+                    ctx.fillStyle = color.replace('0.1', '0.8'); // Color más sólido para texto
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Tinnitus (${hz}Hz)`, xPos, top + 15);
+                    ctx.restore();
+                }
+            };
+
+            // Dibujar sombras para Oído Derecho (Rojo claro)
+            tinnitusOD.forEach(hz => drawZone(hz, 'rgba(239, 68, 68, 0.1)', 'OD'));
+            // Dibujar sombras para Oído Izquierdo (Azul claro)
+            tinnitusOI.forEach(hz => drawZone(hz, 'rgba(59, 130, 246, 0.1)', 'OI'));
+        }
+    };
+
+    // 4. Configurar el Gráfico de Chart.js
+    new Chart(ctx, {
+        type: 'line',
+        plugins: [tinnitusZonesPlugin], // Inyectamos nuestro plugin de sombras
+        data: {
+            datasets: [
+                {
+                    label: 'Audiometría OD (Derecho)',
+                    data: dataOD,
+                    borderColor: '#EF4444', // Rojo
+                    backgroundColor: '#EF4444',
+                    pointStyle: 'circle',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                {
+                    label: 'Audiometría OI (Izquierdo)',
+                    data: dataOI,
+                    borderColor: '#3B82F6', // Azul
+                    backgroundColor: '#3B82F6',
+                    pointStyle: 'crossRot', // Una X
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    borderWidth: 2,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'logarithmic',
+                    min: 125,
+                    max: 8000,
+                    title: { display: true, text: 'Frecuencia (Hz)', font: { weight: 'bold' } },
+                    ticks: {
+                        callback: function(value) {
+                            const validTicks = [125, 250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+                            if (validTicks.includes(value)) {
+                                return value >= 1000 ? (value/1000) + 'k' : value;
+                            }
+                            return ''; // Ocultar líneas intermedias feas
+                        }
+                    },
+                    grid: { color: '#f4f4f5' }
+                },
+                y: {
+                    reverse: true, // ¡CRUCIAL EN AUDIOMETRÍA! El 0 va arriba.
+                    min: -10,
+                    max: 120,
+                    title: { display: true, text: 'Nivel de Audición (dB HL)', font: { weight: 'bold' } },
+                    ticks: {
+                        stepSize: 10
+                    },
+                    grid: { color: '#f4f4f5' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => `Frecuencia: ${items[0].raw.x} Hz`,
+                        label: (item) => `Umbral: ${item.raw.y} dB`
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+¿Qué hace este código en tu Gemelo Digital?
+Invierte el eje Y (reverse: true): Estándar internacional para que la buena audición esté arriba (0 dB) y la sordera profunda abajo (120 dB).
+Usa Escala Logarítmica en el Eje X: Así la distancia visual entre 125 y 250 es la misma que entre 4000 y 8000 (replicando la plantilla clásica que usan los médicos).
+El tinnitusZonesPlugin: Esta es la magia. Lee de la base de datos dónde el paciente dijo que tenía el zumbido, y dibuja automáticamente un "pilar" de color semi-transparente en esa coordenada X, cruzando todo el gráfico de arriba a abajo.
+Tener el zumbido mapeado como un "bloque" visual por detrás de las líneas clínicas te da exactamente lo que el médico necesita para programar la muesca frecuencial (Notch Therapy) del audífono. ¡Estás en la recta final, el diseño y la lógica son sobresalientes!
