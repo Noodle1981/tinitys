@@ -10,16 +10,12 @@ class PatientSession extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'audiometry_data' => 'array',
     ];
 
     public function patient()
     {
         return $this->belongsTo(Patient::class);
-    }
-
-    public function audiometryValues()
-    {
-        return $this->hasMany(AudiometryValue::class);
     }
 
     public function calibrationResults()

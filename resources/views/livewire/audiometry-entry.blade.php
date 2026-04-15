@@ -3,7 +3,6 @@
 use Livewire\Volt\Component;
 use App\Models\Patient;
 use App\Models\PatientSession;
-use App\Models\AudiometryValue;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +13,7 @@ new class extends Component
     public $acufenos = false;
     public $vertigos = false;
     public $selectedSessionId = 'new';
-    public $initialData = ['right' => [], 'left' => []];
+    public $initialData = [];
 
     public function mount($patientId)
     {
@@ -27,7 +26,7 @@ new class extends Component
         $this->vertigos = (bool)$patient->vertigo_symptom;
 
         // Por requerimiento, las nuevas evaluaciones comienzan vacías
-        $this->initialData = ['right' => [], 'left' => []];
+        $this->initialData = ['right' => (object)[], 'left' => (object)[]];
     }
 
     public function with()
@@ -43,16 +42,37 @@ new class extends Component
     public function updatedSelectedSessionId($id)
     {
         if ($id === 'new') {
-            $this->dispatch('load-audiogram', data: ['right' => [], 'left' => []], readOnly: false);
+            $this->dispatch('load-audiogram', data: ['right' => (object)[], 'left' => (object)[]], readOnly: false);
             return;
         }
 
-        $session = PatientSession::with('audiometryValues')->findOrFail($id);
-        $data = ['right' => [], 'left' => []];
+        $session = PatientSession::findOrFail($id);
+        $data = ['right' => (object)[], 'left' => (object)[]];
 
-        foreach ($session->audiometryValues as $val) {
-            $ear = ($val->ear === 'OD' || $val->ear === 'right') ? 'right' : 'left';
-            $data[$ear][$val->frequency] = $val->db_level;
+        if ($session->audiometry_data) {
+            $validFreqs = [125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000];
+            
+            $od = $session->audiometry_data['oido_derecho'] ?? [];
+            $rightData = [];
+            foreach ($od as $item) {
+                if (in_array((int)$item['frecuencia_hz'], $validFreqs) && $item['umbral_db'] !== null) {
+                    $rightData[(string)$item['frecuencia_hz']] = $item['umbral_db'];
+                }
+            }
+            if (!empty($rightData)) {
+                $data['right'] = $rightData;
+            }
+
+            $oi = $session->audiometry_data['oido_izquierdo'] ?? [];
+            $leftData = [];
+            foreach ($oi as $item) {
+                if (in_array((int)$item['frecuencia_hz'], $validFreqs) && $item['umbral_db'] !== null) {
+                    $leftData[(string)$item['frecuencia_hz']] = $item['umbral_db'];
+                }
+            }
+            if (!empty($leftData)) {
+                $data['left'] = $leftData;
+            }
         }
 
         $this->dispatch('load-audiogram', data: $data, readOnly: true);
@@ -72,9 +92,40 @@ new class extends Component
             'vertigo_symptom' => $this->vertigos,
         ]);
 
-        // Crear una nueva sesión
+        // Formatear datos al esquema JSON solicitado
+        $formattedData = [
+            'oido_derecho' => [],
+            'oido_izquierdo' => []
+        ];
+        
+        $validFreqs = [125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000];
+
+        if (isset($data['right']) && is_iterable($data['right'])) {
+            foreach ($data['right'] as $freq => $db) {
+                if (in_array((int)$freq, $validFreqs) && $db !== null) {
+                    $formattedData['oido_derecho'][] = [
+                        'frecuencia_hz' => (int)$freq,
+                        'umbral_db' => (int)$db
+                    ];
+                }
+            }
+        }
+
+        if (isset($data['left']) && is_iterable($data['left'])) {
+            foreach ($data['left'] as $freq => $db) {
+                if (in_array((int)$freq, $validFreqs) && $db !== null) {
+                    $formattedData['oido_izquierdo'][] = [
+                        'frecuencia_hz' => (int)$freq,
+                        'umbral_db' => (int)$db
+                    ];
+                }
+            }
+        }
+
+        // Crear una nueva sesión con el JSON consolidado
         $session = $patient->sessions()->create([
             'type' => 'doctor',
+            'audiometry_data' => $formattedData,
             'metadata' => [
                 'initiated_by' => Auth::id(),
                 'interface' => 'audiogram-canvas-v1',
@@ -82,28 +133,14 @@ new class extends Component
             ],
         ]);
 
-        foreach (['right', 'left'] as $earKey) {
-            if (isset($data[$earKey])) {
-                foreach ($data[$earKey] as $freq => $db) {
-                    $session->audiometryValues()->create([
-                        'ear' => $earKey === 'right' ? 'OD' : 'OI',
-                        'frequency' => (int)$freq,
-                        'type' => 'air',
-                        'db_level' => (int)$db
-                    ]);
-                }
-            }
-        }
-
         $this->selectedSessionId = $session->id;
         $this->dispatch('audiometry-saved');
         
-        // Opcional: Cargar inmediatamente la sesión recién creada como solo lectura
         $this->updatedSelectedSessionId($session->id);
 
         Flux::toast(
             heading: 'Audiometría Guardada',
-            text: 'Los resultados se han archivado correctamente.',
+            text: 'Los resultados se han archivado correctamente en formato JSON.',
             variant: 'success'
         );
     }

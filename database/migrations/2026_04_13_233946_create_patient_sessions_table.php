@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('patient_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['doctor', 'patient']);
-            $table->json('metadata')->nullable(); // For sleep hours, fatigue, stress
+            $table->string('type'); // 'doctor', 'patient_self', etc.
+            $table->json('audiometry_data')->nullable();
+            $table->json('metadata')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });
