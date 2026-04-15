@@ -64,6 +64,10 @@ new class extends Component
                     Gráfica de Tinnitus
                 </flux:navbar.item>
 
+                <flux:navbar.item icon="chart-pie" :href="route('patients.indicators', $patientId)" :current="request()->routeIs('patients.indicators')" wire:navigate>
+                    Indicadores
+                </flux:navbar.item>
+
 
             </flux:navbar>
         </div>

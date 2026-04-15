@@ -41,6 +41,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/consultation', function ($patientId) {
             return view('stages.consultation', ['patientId' => $patientId]);
         })->name('consultation');
+
+        // 7. Indicadores Clínicos
+        Route::get('/indicators', function ($patientId) {
+            return view('indicators', ['patientId' => $patientId]);
+        })->name('indicators');
     });
 
     Route::get('/report/{patientId}', function ($patientId) {

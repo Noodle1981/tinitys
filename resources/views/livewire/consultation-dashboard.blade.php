@@ -1,60 +1,22 @@
 <?php
 
 use Livewire\Volt\Component;
-use App\Models\Patient;
-use App\Models\PatientSession;
-use App\Models\TinnitusMapping;
 
 new class extends Component
 {
     public $patientId;
-    public $patient;
 
-    public function mount($patientId)
+    public function mount($patientId = 1)
     {
         $this->patientId = $patientId;
-        $this->patient = Patient::findOrFail($patientId);
-    }
-
-    public function getConsultationData()
-    {
-        $payload = [
-            'audiometry' => ['OD' => [], 'OI' => []],
-            'tinnitus_zones' => ['OD' => [], 'OI' => []]
-        ];
-
-        // 1. Extraer Última Audiometría Real
-        $lastAudio = PatientSession::where('patient_id', $this->patientId)
-                        ->whereNotNull('audiometry_data')
-                        ->latest()
-                        ->first();
-        
-        if ($lastAudio) {
-            $data = $lastAudio->audiometry_data ?? [];
-            $payload['audiometry']['OD'] = $data['oido_derecho'] ?? [];
-            $payload['audiometry']['OI'] = $data['oido_izquierdo'] ?? [];
-        }
-
-        // 2. Extraer Último Mapeo de Tinnitus Analítico
-        $lastMapping = TinnitusMapping::where('patient_id', $this->patientId)->latest()->first();
-        if ($lastMapping) {
-            $left = $lastMapping->left_layers_config ?? [];
-            $right = $lastMapping->right_layers_config ?? [];
-
-            // Solo enviar los que contengan la variable clinical_hz
-            $payload['tinnitus_zones']['OI'] = array_values(array_filter($left, fn($l) => isset($l['clinical_hz'])));
-            $payload['tinnitus_zones']['OD'] = array_values(array_filter($right, fn($r) => isset($r['clinical_hz'])));
-        }
-
-        return $payload;
     }
 }; ?>
 
 <div class="consultation-root">
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100 italic">Gemelo Digital: Perfil Biográfico</h2>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">Integración de Audiometría Clínica y Caracterización de Tinnitus</p>
+            <h2 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100 italic">Gemelo Digital: Perfil Biográfico (Demo)</h2>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">Integración de Audiometría Clínica y Caracterización de Tinnitus (MODO ESTÁTICO)</p>
         </div>
     </div>
 
@@ -64,32 +26,286 @@ new class extends Component
             <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 rounded-xl">
                 <div class="flex items-center gap-2 mb-2">
                     <flux:icon.information-circle variant="mini" class="text-indigo-500" />
-                    <span class="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Análisis del Gemelo</span>
+                    <span class="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Análisis Demo</span>
                 </div>
-                <p class="text-sm text-indigo-900 dark:text-indigo-200 font-medium">Visualización consolidada de la última sesión clínica.</p>
+                <p class="text-sm text-indigo-900 dark:text-indigo-200 font-medium">Visualización en modo de estabilidad.</p>
             </div>
 
             <div class="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm">
                 <h3 class="text-xs font-bold text-zinc-400 uppercase mb-3">Explicación Visual</h3>
                 <div class="space-y-4 text-xs text-zinc-600 dark:text-zinc-400">
-                    <p>Las líneas con símbolos (<strong>O</strong> rojos y <strong>X</strong> azules) representan los umbrales de audición externa del paciente.</p>
-                    <p>Las <span class="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">columnas sombreadas</span> representan la ubicación frecuencial del tinnitus interno del paciente.</p>
-                    <p class="italic text-[10px] text-zinc-500">Donde la sombra cruza el umbral, existe mayor riesgo de enmascaramiento clínico.</p>
-                </div>
-            </div>
-
-            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 rounded-xl flex items-start gap-3">
-                <flux:icon.light-bulb variant="mini" class="text-amber-500 mt-1" />
-                <div>
-                    <span class="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase block mb-1">Dato de Valor</span>
-                    <p class="text-[10px] text-amber-700 dark:text-amber-400">Comparar la ubicación de la sombra con el drop-off de la curva ayuda a decidir si aumentar ganancia o aplicar Notch Therapy.</p>
+                    <p>Las líneas con símbolos representan los umbrales de audición externa.</p>
+                    <p>Las <span class="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">columnas sombreadas</span> representan la ubicación frecuencial del tinnitus.</p>
                 </div>
             </div>
         </div>
 
         <!-- El Gran Gráfico Clínico -->
         <div class="lg:col-span-3">
-            @include('partials.consultation-canvas')
+            <div 
+                class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm p-4"
+                x-data="consultationViewer({
+                    audiometry: {
+                        OD: [{frecuencia_hz: 125, umbral_db: 10}, {frecuencia_hz: 250, umbral_db: 15}, {frecuencia_hz: 500, umbral_db: 20}, {frecuencia_hz: 1000, umbral_db: 25}, {frecuencia_hz: 2000, umbral_db: 30}, {frecuencia_hz: 4000, umbral_db: 55}, {frecuencia_hz: 8000, umbral_db: 70}],
+                        OI: [{frecuencia_hz: 125, umbral_db: 5}, {frecuencia_hz: 250, umbral_db: 10}, {frecuencia_hz: 500, umbral_db: 15}, {frecuencia_hz: 1000, umbral_db: 20}, {frecuencia_hz: 2000, umbral_db: 25}, {frecuencia_hz: 4000, umbral_db: 40}, {frecuencia_hz: 8000, umbral_db: 50}]
+                    },
+                    tinnitus_zones: {
+                        OD: [{clinical_hz: 4000}],
+                        OI: [{clinical_hz: 4000}]
+                    }
+                })"
+            >
+                <div class="relative w-full overflow-hidden rounded-lg border border-zinc-100 dark:border-zinc-800">
+                    <canvas 
+                        x-ref="consultationCanvas" 
+                        class="w-full h-auto cursor-crosshair"
+                    ></canvas>
+                </div>
+
+                <!-- Leyenda Clínica Consolidada -->
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-6 text-[11px] font-bold tracking-tight">
+                    <div class="flex items-center gap-1.5 text-red-500">
+                        <span class="text-xs">O</span>
+                        <span>Oído Derecho (OD)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-blue-500">
+                        <span class="text-xs">X</span>
+                        <span>Oído Izquierdo (OI)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-amber-500/60">
+                        <div class="w-3 h-1.5 bg-amber-500/20 border border-amber-500/30 rounded-sm"></div>
+                        <span>Banana del Habla</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+@once
+<script>
+document.addEventListener('alpine:init', () => {
+    if (window.consultationViewerLoaded) return;
+    window.consultationViewerLoaded = true;
+
+    Alpine.data('consultationViewer', (payload) => ({
+        payload: payload,
+        audioData: { right: {}, left: {} },
+        canvas: null,
+        ctx: null,
+        dpr: 1, 
+        CW: 640, 
+        CH: 500,
+        FREQS: [125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000],
+        FREQ_SHOW: new Set([125, 250, 500, 1000, 2000, 4000, 8000]),
+        FREQ_LABELS: { 125: '125', 250: '250', 500: '500', 750: '750', 1000: '1k', 1500: '1.5k', 2000: '2k', 3000: '3k', 4000: '4k', 6000: '6k', 8000: '8k' },
+        DB_MIN: -10, 
+        DB_MAX: 120,
+        PAD: { l: 60, r: 20, t: 40, b: 50 },
+        RC: '#e11d48',
+        LC: '#2563eb',
+
+        init() {
+            this.canvas = this.$refs.consultationCanvas;
+            if (!this.canvas) return;
+            this.ctx = this.canvas.getContext('2d');
+            this.transformData();
+            this.doResize();
+            window.addEventListener('resize', () => { 
+                this.doResize(); 
+                if(this.draw) this.draw(); 
+            });
+            this.draw();
+        },
+
+        transformData() {
+            const mapArr = (arr) => {
+                const out = {};
+                (arr || []).forEach(item => {
+                    if (item.umbral_db !== null) out[item.frecuencia_hz] = item.umbral_db;
+                });
+                return out;
+            };
+            this.audioData.right = mapArr(this.payload.audiometry.OD);
+            this.audioData.left = mapArr(this.payload.audiometry.OI);
+        },
+
+        pW() { return this.CW - this.PAD.l - this.PAD.r; },
+        pH() { return this.CH - this.PAD.t - this.PAD.b; },
+
+        getX(hz) {
+            hz = Number(hz);
+            const index = this.FREQS.indexOf(hz);
+            if (index !== -1) {
+                return this.PAD.l + (index / (this.FREQS.length - 1)) * this.pW();
+            }
+            if (hz < this.FREQS[0]) return this.PAD.l;
+            if (hz > this.FREQS[this.FREQS.length - 1]) return this.CW - this.PAD.r;
+
+            for (let i = 0; i < this.FREQS.length - 1; i++) {
+                if (hz >= this.FREQS[i] && hz <= this.FREQS[i+1]) {
+                    const f1 = this.FREQS[i], f2 = this.FREQS[i+1];
+                    const x1 = this.PAD.l + (i / (this.FREQS.length - 1)) * this.pW();
+                    const x2 = this.PAD.l + ((i + 1) / (this.FREQS.length - 1)) * this.pW();
+                    const ratio = (Math.log(hz) - Math.log(f1)) / (Math.log(f2) - Math.log(f1));
+                    return x1 + ratio * (x2 - x1);
+                }
+            }
+            return this.PAD.l;
+        },
+
+        getY(db) { 
+            return this.PAD.t + (db - this.DB_MIN) / (this.DB_MAX - this.DB_MIN) * this.pH(); 
+        },
+
+        doResize() {
+            if (!this.canvas) return;
+            const w = this.canvas.parentNode.getBoundingClientRect().width || 640;
+            this.CW = Math.floor(w);
+            this.CH = 480; 
+            this.dpr = window.devicePixelRatio || 1;
+            this.canvas.width = this.CW * this.dpr;
+            this.canvas.height = this.CH * this.dpr;
+            this.canvas.style.height = this.CH + 'px';
+            this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        },
+
+        draw() {
+            const ctx = this.ctx;
+            if (!ctx) return;
+            ctx.clearRect(0, 0, this.CW, this.CH);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, this.CW, this.CH);
+
+            this.drawTinnitusZones();
+            this.drawSpeechBanana();
+            this.drawGrid();
+            this.drawEarData(this.audioData.left, this.LC, 'left');
+            this.drawEarData(this.audioData.right, this.RC, 'right');
+        },
+
+        drawTinnitusZones() {
+            const zones = this.payload.tinnitus_zones;
+            if (!zones) return;
+            const drawCol = (hz, color) => {
+                const x = this.getX(hz);
+                this.ctx.save();
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x - 16, this.PAD.t, 32, this.pH());
+                this.ctx.restore();
+            };
+            (zones.OD || []).forEach(z => drawCol(z.clinical_hz, 'rgba(225, 29, 72, 0.08)'));
+            (zones.OI || []).forEach(z => drawCol(z.clinical_hz, 'rgba(37, 99, 235, 0.08)'));
+        },
+
+        drawSpeechBanana() {
+            const soundsData = [
+                { hz: 250, min: 30, max: 50, sounds: ["u", "o", "m", "z"] },
+                { hz: 500, min: 25, max: 45, sounds: ["a", "i", "e", "j"] },
+                { hz: 1000, min: 20, max: 45, sounds: ["b", "d", "g", "r"] },
+                { hz: 2000, min: 20, max: 50, sounds: ["ch", "sh", "k", "t"] },
+                { hz: 4000, min: 25, max: 55, sounds: ["s", "f", "th"] },
+                { hz: 6000, min: 35, max: 60, sounds: ["agudos"] }
+            ];
+            this.ctx.beginPath();
+            soundsData.forEach((d, i) => {
+                const x = this.getX(d.hz), y = this.getY(d.min);
+                i === 0 ? this.ctx.moveTo(x, y) : this.ctx.lineTo(x, y);
+            });
+            [...soundsData].reverse().forEach((d) => this.ctx.lineTo(this.getX(d.hz), this.getY(d.max)));
+            this.ctx.closePath();
+            this.ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+            this.ctx.fill();
+            this.ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = 'rgba(180, 130, 20, 0.7)';
+            this.ctx.font = '500 11px system-ui';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            soundsData.forEach(d => {
+                const x = this.getX(d.hz);
+                const y = this.getY((d.min + d.max) / 2);
+                this.ctx.fillText(d.sounds.join(' '), x, y);
+            });
+        },
+
+        drawGrid() {
+            const ctx = this.ctx;
+            const gc = 'rgba(0,0,0,0.06)';
+            const gs = 'rgba(0,0,0,0.12)';
+            for (let db = this.DB_MIN; db <= this.DB_MAX; db += 10) {
+                const y = this.getY(db);
+                ctx.beginPath();
+                ctx.moveTo(this.PAD.l, y);
+                ctx.lineTo(this.CW - this.PAD.r, y);
+                ctx.strokeStyle = db === 0 ? gs : gc;
+                ctx.lineWidth = db === 0 ? 1 : 0.5;
+                ctx.stroke();
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px system-ui';
+                ctx.textAlign = 'right';
+                ctx.fillText(db, this.PAD.l - 12, y + 3);
+            }
+            this.FREQS.forEach(hz => {
+                const x = this.getX(hz);
+                const show = this.FREQ_SHOW.has(hz);
+                ctx.beginPath();
+                ctx.moveTo(x, this.PAD.t);
+                ctx.lineTo(x, this.CH - this.PAD.b);
+                ctx.strokeStyle = show ? gs : gc;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+                if (show) {
+                    ctx.fillStyle = '#334155';
+                    ctx.font = 'bold 11px system-ui';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.FREQ_LABELS[hz], x, this.CH - this.PAD.b + 20);
+                }
+            });
+        },
+
+        drawEarData(earData, color, earType) {
+            const freqs = Object.keys(earData).map(Number).filter(f => this.FREQS.includes(f)).sort((a, b) => a - b);
+            if (freqs.length === 0) return;
+            const ctx = this.ctx;
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            for (let i = 0; i < freqs.length; i++) {
+                const hz = freqs[i], x = this.getX(hz), y = this.getY(earData[hz]);
+                if (i === 0) { ctx.moveTo(x, y); } 
+                else {
+                    const prevHz = freqs[i - 1];
+                    let hasGap = false;
+                    for (let f of this.FREQ_SHOW) { if (f > prevHz && f < hz) { hasGap = true; break; } }
+                    if (hasGap) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
+                }
+            }
+            ctx.stroke();
+            freqs.forEach(hz => {
+                const x = this.getX(hz), y = this.getY(earData[hz]);
+                if (earType === 'right') this.drawO(x, y, color); else this.drawXSym(x, y, color);
+            });
+        },
+
+        drawO(x, y, col) {
+            this.ctx.beginPath(); this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fillStyle = '#fff'; this.ctx.fill();
+            this.ctx.strokeStyle = col; this.ctx.lineWidth = 2; this.ctx.stroke();
+        },
+
+        drawXSym(x, y, col) {
+            const s = 4.5;
+            this.ctx.beginPath(); this.ctx.arc(x, y, 5, 0, Math.PI * 2); 
+            this.ctx.fillStyle = '#fff'; this.ctx.fill();
+            this.ctx.beginPath(); 
+            this.ctx.moveTo(x - s, y - s); this.ctx.lineTo(x + s, y + s);
+            this.ctx.moveTo(x + s, y - s); this.ctx.lineTo(x - s, y + s);
+            this.ctx.strokeStyle = col; this.ctx.lineWidth = 2; this.ctx.stroke();
+        }
+    }));
+});
+</script>
+@endonce
