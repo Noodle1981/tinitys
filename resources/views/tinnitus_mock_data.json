@@ -1,0 +1,79 @@
+{
+  "auth": {
+    "user": {
+      "id": 1,
+      "name": "Dr. House",
+      "email": "doctor@example.com",
+      "role": "doctor",
+      "last_login": "2026-04-16T09:45:00Z"
+    },
+    "token": "mock_jwt_token_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "doctor": {
+    "id": 1,
+    "name": "Dr. House",
+    "specialty": "Audiología Clínica",
+    "license": "MP-12345",
+    "clinic": "Centro Tinitus Avanzado"
+  },
+  "patient": {
+    "id": 2,
+    "name": "Omar Olivera",
+    "dni": "28891983",
+    "email": "paciente@example.com",
+    "gender": "Masculino",
+    "age": 42,
+    "occupation": "Administrativo",
+    "evolution_years": 3,
+    "diagnosis": "Tinnitus Bilateral Crónico"
+  },
+  "latest_profile": {
+    "id": 150,
+    "date": "2026-04-16T13:00:00Z",
+    "reliability_index": 82,
+    "factors": {
+      "sleep_quality": 2,
+      "stress_level": 4,
+      "noise_exposure": 3,
+      "health_state": 2,
+      "fatigue_level": 1
+    },
+    "symptoms": {
+      "alcohol_intake": true,
+      "has_puna": false,
+      "has_cold": false,
+      "has_throat_pain": false
+    },
+    "intensity_eva": {
+      "right_ear": { "label": "Intenso", "value": 80 },
+      "left_ear": { "label": "Moderado", "value": 60 }
+    },
+    "frequency_perception": "Medio ~2kHz",
+    "recommendations": [
+      {
+        "id": 1,
+        "type": "precaution",
+        "color": "#ef4444",
+        "text": "Evitar entornos ruidosos sin protección auditiva certificada."
+      },
+      {
+        "id": 2,
+        "type": "therapy",
+        "color": "#3b82f6",
+        "text": "Utilizar enmascaradores de ruido blanco (60dB) durante la conciliación del sueño."
+      },
+      {
+        "id": 3,
+        "type": "lifestyle",
+        "color": "#f59e0b",
+        "text": "Reducir el consumo de cafeína, sal y estimulantes durante las próximas 48 horas."
+      }
+    ]
+  },
+  "api_endpoints_preview": {
+    "login": "POST /api/v1/auth/login",
+    "get_profile": "GET /api/v1/patients/{id}/latest-profile",
+    "save_profile": "POST /api/v1/profiles",
+    "get_indicators": "GET /api/v1/patients/{id}/indicators"
+  }
+}
