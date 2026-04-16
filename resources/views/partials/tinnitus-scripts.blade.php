@@ -207,65 +207,76 @@
                 const vol = l.vol / 100;
                 const spd = l.speed !== null ? this.spdFromSlider(l.speed) : 1;
                 const color = l.color;
-                const alpha = isOn ? 1.0 : 0.35;
-                const amp = (H / 2 - 4) * vol;
-
+                
+                // Volvemos al renderizado limpio — sin trails ni perspectiva
                 ctx2d.clearRect(0, 0, W, H);
+                
+                const alpha = isOn ? 1.0 : 0.15;
+                const pulse = isOn ? (Math.sin(t * 10) * 0.05 + 1) : 1;
+                const amp = (H / 2 - 2) * vol * pulse;
+
                 ctx2d.globalAlpha = alpha;
                 ctx2d.strokeStyle = color;
-                ctx2d.lineWidth = 2;
+                ctx2d.lineWidth = isOn ? 2.5 : 1;
+                
+                if (isOn) {
+                    ctx2d.shadowBlur = 10;
+                    ctx2d.shadowColor = color;
+                }
+
                 ctx2d.beginPath();
 
                 if (l.type === 'pure') {
-                    // Onda sinusoidal que scrollea — freq controla densidad de ciclos
-                    const cycles = Math.max(1, Math.min(12, freq / 1000 * 4));
-                    for (let x = 0; x <= W; x++) {
-                        const angle = (x / W) * cycles * Math.PI * 2 - t * 2.5;
-                        const y = H / 2 + Math.sin(angle) * amp;
-                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-                    }
-                    t += 0.05;
-
-                } else if (l.type === 'noise') {
-                    // Pseudo-ruido con senos inarmónicos que scrollean — da sensación de banda
-                    // Freq controla qué tan caótica es la banda
-                    const f1 = freq / 1200 * 3 + 2;
-                    const f2 = f1 * 1.73 + 1.1;
-                    const f3 = f1 * 0.41 + 0.7;
-                    for (let x = 0; x <= W; x++) {
-                        const nx = x / W;
-                        const n = Math.sin(nx * f1 * Math.PI * 2 - t * 9)
-                                + Math.sin(nx * f2 * Math.PI * 2 - t * 5.7) * 0.6
-                                + Math.sin(nx * f3 * Math.PI * 2 - t * 13.3) * 0.4;
-                        const y = H / 2 + (n / 2) * amp;
-                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-                    }
-                    t += 0.025;
-
-                } else if (l.type === 'pulse') {
-                    // Onda que scrollea + amplitud modulada a ritmo de los pulsos/seg
-                    const pulseEnv = (Math.sin(t * spd * Math.PI * 2) + 1) / 2;
-                    for (let x = 0; x <= W; x++) {
-                        const angle = (x / W) * 6 * Math.PI - t * spd;
-                        const y = H / 2 + Math.sin(angle) * amp * Math.max(0.08, pulseEnv);
-                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-                    }
-                    t += 0.016;
-
-                } else if (l.type === 'sweep') {
-                    // Onda que scrollea y cambia de densidad de frecuencia continuamente
-                    const sweepPhase = Math.sin(t * spd * 0.5);
-                    const cycles = 3 + sweepPhase * 2.5;
+                    const cycles = Math.max(1.5, Math.min(15, freq / 1000 * 5));
                     for (let x = 0; x <= W; x++) {
                         const angle = (x / W) * cycles * Math.PI * 2 - t * 4;
                         const y = H / 2 + Math.sin(angle) * amp;
                         x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
                     }
-                    t += 0.016;
+                    t += 0.06;
+
+                } else if (l.type === 'noise') {
+                    for (let x = 0; x <= W; x++) {
+                        const nx = x / W;
+                        const n = Math.sin(nx * 12 * Math.PI - t * 15) * 0.5
+                                + Math.sin(nx * freq/200 * Math.PI - t * 8) * 0.3
+                                + (Math.random() - 0.5) * 0.4;
+                        const y = H / 2 + n * amp;
+                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+                    }
+                    t += 0.04;
+
+                } else if (l.type === 'pulse') {
+                    const pulseEnv = Math.pow((Math.sin(t * spd * Math.PI) + 1) / 2, 3);
+                    const cycles = 4 + (freq / 1500);
+                    
+                    if (isOn) {
+                        ctx2d.shadowBlur = 5 + (pulseEnv * 15);
+                        ctx2d.lineWidth = 1 + (pulseEnv * 3);
+                    }
+
+                    for (let x = 0; x <= W; x++) {
+                        const nx = x / W;
+                        const angle = nx * cycles * Math.PI * 2 - t * (10 + pulseEnv * 20);
+                        const y = H / 2 + Math.sin(angle) * amp * (0.2 + pulseEnv * 0.8);
+                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+                    }
+                    t += 0.01 + (pulseEnv * 0.04);
+
+                } else if (l.type === 'sweep') {
+                    const sweepPhase = Math.sin(t * spd * 0.5);
+                    const cycles = 4 + sweepPhase * 3.5;
+                    for (let x = 0; x <= W; x++) {
+                        const angle = (x / W) * cycles * Math.PI * 2 - t * 5;
+                        const y = H / 2 + Math.sin(angle) * amp;
+                        x === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+                    }
+                    t += 0.02;
                 }
 
                 ctx2d.stroke();
                 ctx2d.globalAlpha = 1.0;
+                ctx2d.shadowBlur = 0;
 
                 this.waveAnimFrames[key] = requestAnimationFrame(draw);
             };

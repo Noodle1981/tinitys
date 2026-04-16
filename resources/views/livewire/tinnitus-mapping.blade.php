@@ -168,7 +168,7 @@ new class extends Component
 
                     {{-- Visualizador de Onda --}}
                     <div class="mt-3 pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
-                        <canvas class="w-full h-6 block rounded-sm bg-zinc-50/50 dark:bg-zinc-800/20"
+                        <canvas class="w-full h-8 block rounded-sm bg-zinc-50/50 dark:bg-zinc-800/20"
                                 x-effect="startWaveAnim(activeEar, l, $el)">
                         </canvas>
                     </div>
