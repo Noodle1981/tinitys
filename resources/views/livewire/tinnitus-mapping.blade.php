@@ -11,7 +11,7 @@ new class extends Component
     public $ear = 'ambos'; // 'OI', 'OD', 'ambos'
     public $leftLayersConfig = [];
     public $rightLayersConfig = [];
-    public $masterVol = 65;
+    public $masterVol = 100;
 
     protected function defaultLayers(): array
     {
@@ -59,147 +59,131 @@ new class extends Component
     }
 }; ?>
 
-<div class="tinnitus-stage-2" wire:ignore x-data="tinnitusMapper(@js($leftLayersConfig), @js($rightLayersConfig), @js($masterVol))" x-init="activeEar = 'left'">
+<div class="space-y-3" wire:ignore x-data="tinnitusMapper(@js($leftLayersConfig), @js($rightLayersConfig), @js($masterVol))" x-init="activeEar = 'left'">
     @include('partials.tinnitus-scripts')
-    <style>
-        .stage-2-container { font-family: 'Inter', sans-serif; --color-background-primary: white; --color-background-secondary: #f8fafc; --color-border-tertiary: #e2e8f0; --color-text-primary: #1e293b; --color-text-secondary: #475569; --color-text-tertiary: #64748b; --border-radius-lg: 12px; --border-radius-md: 8px; }
-        .card { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 10px; transition: border-color .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .card.is-on { border-color: #1D9E75; border-width: 2px; }
-        .lh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .lname { font-size: 14px; font-weight: 600; color: var(--color-text-primary); flex: 1; display: flex; align-items: center; gap: 6px; }
-        .ldesc { font-size: 11px; color: var(--color-text-tertiary); }
-        .cr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-        .cr label { font-size: 12px; color: var(--color-text-secondary); width: 85px; flex-shrink: 0; }
-        .cr input[type=range] { flex: 1; accent-color: #1D9E75; }
-        .cr .v { font-size: 12px; font-weight: 500; color: var(--color-text-primary); width: 65px; text-align: right; white-space: nowrap; }
-        .onbtn { padding: 4px 14px; border-radius: 20px; border: 1px solid var(--color-border-tertiary); background: transparent; font-size: 12px; cursor: pointer; color: var(--color-text-tertiary); transition: all .15s; font-weight: 600; }
-        .hint { font-size: 12px; color: var(--color-text-tertiary); line-height: 1.5; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 12px; border: 1px solid var(--color-border-tertiary); }
-        .ear-sel-btn { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid var(--color-border-tertiary); background: #f8fafc; color: #64748b; font-weight: 600; cursor: pointer; transition: all .2s; }
-        .ear-sel-btn.active { background: #1D9E75; color: white; border-color: #1D9E75; box-shadow: 0 2px 4px rgba(29, 158, 117, 0.2); }
-        .tab-btn { padding: 8px 16px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; }
-        .tab-btn.active { color: #1D9E75; border-bottom-color: #1D9E75; }
-        .wave-canvas { width: 100%; height: 48px; display: block; border-radius: 6px; margin-top: 10px; background: transparent; }
-    </style>
-
-    <div class="stage-2-container">
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.06em">Etapa 2: Mapeador de Tinnitus Multicapa</p>
-
-        <div x-show="!initialized" class="text-center p-8 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-            <p class="text-slate-600 font-medium mb-4">¿En qué oído percibe el paciente el Acúfeno a calibrar?</p>
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                <button @click="initApp('OI')" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm transition-colors">Solo Izquierdo (Unilateral)</button>
-                <button @click="initApp('OD')" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-sm transition-colors">Solo Derecho (Unilateral)</button>
-                <button @click="initApp('ambos')" class="px-6 py-3 bg-[#1D9E75] hover:bg-[#158060] text-white rounded-lg font-bold shadow-sm transition-colors">Ambos Oídos (Bilateral)</button>
+    
+    {{-- Header del Etapa --}}
+    <div class="flex items-center justify-between px-1">
+        <div class="flex items-center gap-2">
+            <flux:icon.musical-note class="size-5 text-emerald-500" />
+            <div>
+                <h2 class="text-lg font-bold text-zinc-900 dark:text-white leading-tight">{{ __('Mapeador de Tinnitus') }}</h2>
+                <p class="text-[9px] uppercase font-bold text-zinc-400 tracking-widest">{{ __('Etapa 2: Calibración') }}</p>
             </div>
         </div>
-
-        <div x-show="initialized" style="display:none">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                <div class="hint !mb-0 flex-1">Activá cada capa con el botón ON/OFF. Ajustá frecuencia y volumen hasta que suene igual a tu tinnitus.</div>
-                <button @click="resetScope()" class="px-4 py-2 text-xs font-semibold text-slate-500 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0">
-                    Cambiar Oído Afectado
-                </button>
-            </div>
-
-            <div class="flex border-b border-slate-200 mb-4" x-show="evaluationScope === 'ambos'">
-                <button @click="activeEar = 'left'"  :class="activeEar === 'left' ? 'active' : ''" class="tab-btn">Oído Izquierdo</button>
-                <button @click="activeEar = 'right'" :class="activeEar === 'right' ? 'active' : ''" class="tab-btn">Oído Derecho</button>
-            </div>
-
-            <div class="layers-list">
-                <!-- Capas de Oído Izquierdo -->
-                <div x-show="activeEar === 'left'">
-                    <template x-for="(l, index) in leftLayers" :key="'l-' + l.id">
-                        <div class="card" :class="activeLeftNodes[l.id] ? 'is-on' : ''">
-                            <div class="lh">
-                                <div class="ldot" :style="'background:'+l.color"></div>
-                                <div class="lname">
-                                    <span x-text="l.name"></span>
-                                </div>
-                                <div class="ldesc" x-text="l.desc"></div>
-                                <button @click="toggleLayer('left', l.id)" class="onbtn" 
-                                        :style="activeLeftNodes[l.id] ? 'background:'+l.color+'11; color:'+l.color+'; border-color:'+l.color : ''"
-                                        x-text="activeLeftNodes[l.id] ? 'ON' : 'OFF'"></button>
-                            </div>
-                            
-                            <div class="cr">
-                                <label>Frecuencia</label>
-                                <input type="range" min="0" max="100" x-model="l.freq" @input="updateFreq('left', l.id, $event.target.value)">
-                                <span class="v" x-text="fmtFreq(freqFromSlider(l.freq))"></span>
-                            </div>
-
-                            <div class="cr">
-                                <label>Volumen</label>
-                                <input type="range" min="0" max="100" x-model="l.vol" @input="updateVol('left', l.id, $event.target.value)">
-                                <span class="v" x-text="l.vol + '%'"></span>
-                            </div>
-
-                            <template x-if="l.speed !== null">
-                                <div class="cr">
-                                    <label x-text="l.type === 'pulse' ? 'Pulsos/seg' : 'Velocidad'"></label>
-                                    <input type="range" min="0" max="100" x-model="l.speed" @input="updateSpeed('left', l.id, $event.target.value)">
-                                    <span class="v" x-text="spdFromSlider(l.speed) + ' Hz'"></span>
-                                </div>
-                            </template>
-                            <canvas class="wave-canvas"
-                                    x-effect="startWaveAnim('left', l, $el)">
-                            </canvas>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- Capas de Oído Derecho -->
-                <div x-show="activeEar === 'right'" style="display:none">
-                    <template x-for="(l, index) in rightLayers" :key="'r-' + l.id">
-                        <div class="card" :class="activeRightNodes[l.id] ? 'is-on' : ''">
-                            <div class="lh">
-                                <div class="ldot" :style="'background:'+l.color"></div>
-                                <div class="lname">
-                                    <span x-text="l.name"></span>
-                                </div>
-                                <div class="ldesc" x-text="l.desc"></div>
-                                <button @click="toggleLayer('right', l.id)" class="onbtn" 
-                                        :style="activeRightNodes[l.id] ? 'background:'+l.color+'11; color:'+l.color+'; border-color:'+l.color : ''"
-                                        x-text="activeRightNodes[l.id] ? 'ON' : 'OFF'"></button>
-                            </div>
-                            
-                            <div class="cr">
-                                <label>Frecuencia</label>
-                                <input type="range" min="0" max="100" x-model="l.freq" @input="updateFreq('right', l.id, $event.target.value)">
-                                <span class="v" x-text="fmtFreq(freqFromSlider(l.freq))"></span>
-                            </div>
-
-                            <div class="cr">
-                                <label>Volumen</label>
-                                <input type="range" min="0" max="100" x-model="l.vol" @input="updateVol('right', l.id, $event.target.value)">
-                                <span class="v" x-text="l.vol + '%'"></span>
-                            </div>
-
-                            <template x-if="l.speed !== null">
-                                <div class="cr">
-                                    <label x-text="l.type === 'pulse' ? 'Pulsos/seg' : 'Velocidad'"></label>
-                                    <input type="range" min="0" max="100" x-model="l.speed" @input="updateSpeed('right', l.id, $event.target.value)">
-                                    <span class="v" x-text="spdFromSlider(l.speed) + ' Hz'"></span>
-                                </div>
-                            </template>
-                            <canvas class="wave-canvas"
-                                    x-effect="startWaveAnim('right', l, $el)">
-                            </canvas>
-                        </div>
-                    </template>
-                </div>
-            </div>
-
-            <div class="bg-slate-100 p-4 rounded-lg flex items-center gap-4 mb-4">
-                <span class="text-xs font-bold text-slate-500 uppercase w-20">Master</span>
-                <input type="range" min="10" max="100" x-model="masterVol" @input="setMasterVol($event.target.value)" class="flex-1 accent-slate-800">
-                <span class="text-sm font-bold w-12 text-right" x-text="masterVol + '%'"></span>
-            </div>
-
-            <button @click="saveProfile()" class="w-full py-3 bg-[#1D9E75] text-white rounded-lg font-bold shadow-md hover:bg-[#158060] transition-colors">
-                Guardar Mapeo de Tinnitus
-            </button>
+        <div x-show="initialized" class="flex gap-2">
+            <flux:button variant="ghost" size="xs" icon="arrow-path" @click="resetScope()">
+                {{ __('Reiniciar') }}
+            </flux:button>
         </div>
     </div>
+
+    {{-- Pantalla de Inicio: Selección de Alcance (Compacta) --}}
+    <div x-show="!initialized" class="py-10 px-6 bg-zinc-50 dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-center">
+        <flux:heading size="md" class="mb-1">{{ __('¿Dónde percibe el Acúfeno?') }}</flux:heading>
+        <flux:subheading size="xs" class="mb-6">{{ __('Inicie la síntesis de frecuencia.') }}</flux:subheading>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <flux:button variant="outline" class="flex-1 max-w-xs border-blue-200 hover:bg-blue-50 dark:border-blue-900 h-14" @click="initApp('OI')">
+                <flux:icon.speaker-wave class="mr-2 text-blue-500" />
+                {{ __('Izquierdo') }}
+            </flux:button>
+            <flux:button variant="outline" class="flex-1 max-w-xs border-red-200 hover:bg-red-50 dark:border-red-900 h-14" @click="initApp('OD')">
+                <flux:icon.speaker-wave class="mr-2 text-red-500" />
+                {{ __('Derecho') }}
+            </flux:button>
+            <flux:button variant="primary" class="flex-1 max-w-xs bg-emerald-600 hover:bg-emerald-700 h-14" @click="initApp('ambos')">
+                <flux:icon.arrow-path class="mr-2" />
+                {{ __('Bilateral') }}
+            </flux:button>
+        </div>
+    </div>
+
+    {{-- Panel de Mapeo Activo --}}
+    <div x-show="initialized" class="space-y-3" style="display:none">
+        {{-- Tabs de Oído (Solo si es Bilateral) --}}
+        <div x-show="evaluationScope === 'ambos'" class="flex p-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg w-fit mx-auto">
+            <button type="button" @click="activeEar = 'left'" 
+                class="px-5 py-1 text-[10px] font-bold rounded-md transition-all"
+                :class="activeEar === 'left' ? 'bg-white dark:bg-zinc-700 text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">
+                {{ __('Izquierdo') }}
+            </button>
+            <button type="button" @click="activeEar = 'right'" 
+                class="px-5 py-1 text-[10px] font-bold rounded-md transition-all"
+                :class="activeEar === 'right' ? 'bg-white dark:bg-zinc-700 text-emerald-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">
+                {{ __('Derecho') }}
+            </button>
+        </div>
+
+        {{-- Grid de 4 Capas (Compacto) --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <template x-for="l in (activeEar === 'left' ? leftLayers : rightLayers)" :key="activeEar + '-' + l.id">
+                <div class="p-3 transition-all duration-300 border-2 rounded-xl bg-white dark:bg-zinc-900" 
+                    :class="(activeEar === 'left' ? activeLeftNodes[l.id] : activeRightNodes[l.id]) ? 'border-emerald-500 shadow-lg shadow-emerald-500/5' : 'border-zinc-100 dark:border-zinc-800'">
+                    
+                    {{-- Cabecera de Tarjeta --}}
+                    <div class="flex items-center gap-2 mb-3 p-1.5 -m-1.5 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        @click="toggleLayer(activeEar, l.id)">
+                        <div class="size-2.5 rounded-full shrink-0" :style="'background:'+l.color"></div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-[13px] font-bold text-zinc-900 dark:text-white truncate" x-text="l.name"></h3>
+                            <p class="text-[9px] text-zinc-400 truncate uppercase tracking-tighter" x-text="l.desc"></p>
+                        </div>
+                        <div class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-colors"
+                            :class="(activeEar === 'left' ? activeLeftNodes[l.id] : activeRightNodes[l.id]) 
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' 
+                                : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600'">
+                            <span x-text="(activeEar === 'left' ? activeLeftNodes[l.id] : activeRightNodes[l.id]) ? 'ON' : 'OFF'"></span>
+                        </div>
+                    </div>
+
+                    {{-- Controles de Capa --}}
+                    <div class="space-y-3 px-0.5 py-1">
+                        <div class="flex flex-col">
+                            <label class="flex justify-between text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 uppercase tracking-wide">
+                                {{ __('Freq') }}
+                                <span class="font-bold text-zinc-800 dark:text-zinc-200" x-text="fmtFreq(freqFromSlider(l.freq))"></span>
+                            </label>
+                            <input type="range" min="0" max="100" x-model="l.freq" class="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" @input="updateFreq(activeEar, l.id, $event.target.value)">
+                        </div>
+
+                        <div class="flex flex-col">
+                            <label class="flex justify-between text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 uppercase tracking-wide">
+                                {{ __('Vol') }}
+                                <span class="font-bold text-zinc-800 dark:text-zinc-200" x-text="l.vol + '%'"></span>
+                            </label>
+                            <input type="range" min="0" max="100" x-model="l.vol" class="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" @input="updateVol(activeEar, l.id, $event.target.value)">
+                        </div>
+
+                        <template x-if="l.speed !== null">
+                            <div class="flex flex-col">
+                                <label class="flex justify-between text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 uppercase tracking-wide">
+                                    <span x-text="l.type === 'pulse' ? 'Pulsos' : 'Velocidad'"></span>
+                                    <span class="font-bold text-zinc-800 dark:text-zinc-200" x-text="spdFromSlider(l.speed) + ' Hz'"></span>
+                                </label>
+                                <input type="range" min="0" max="100" x-model="l.speed" class="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" @input="updateSpeed(activeEar, l.id, $event.target.value)">
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- Visualizador de Onda --}}
+                    <div class="mt-3 pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                        <canvas class="w-full h-6 block rounded-sm bg-zinc-50/50 dark:bg-zinc-800/20"
+                                x-effect="startWaveAnim(activeEar, l, $el)">
+                        </canvas>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {{-- Footer de Acciones --}}
+        <div class="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+            <flux:button variant="primary" class="w-full md:w-auto px-8 bg-emerald-600 hover:bg-emerald-700 h-10 text-xs shadow-none" icon="check-badge" @click="saveProfile()">
+                {{ __('Guardar Mapeo') }}
+            </flux:button>
+        </div>
+    </div>
+</div>
+</div>
+</div>
 </div>
