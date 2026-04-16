@@ -1,104 +1,206 @@
 <x-layouts::patient :patientId="$patientId" title="Perfil del Paciente">
     <div class="space-y-6">
-        <div class="bg-white dark:bg-zinc-900 shadow-sm sm:rounded-lg p-8 border border-zinc-200 dark:border-zinc-700">
-            <div class="flex justify-between items-start mb-6">
-                <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Datos Personales e Identificación</h2>
-                <a href="{{ route('patients.consultation', $patientId) }}" 
-                   class="inline-flex items-center gap-2 px-4 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded-lg font-bold text-sm shadow-sm transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    Modo Consulta / Gemelo Digital
-                </a>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter">DNI / Documento</p>
-                    <p class="text-lg font-medium text-zinc-900 dark:text-white mt-1">{{ $patient->dni }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter">Fecha de Nacimiento</p>
-                    <p class="text-lg font-medium text-zinc-900 dark:text-white mt-1">{{ $patient->birth_date ? $patient->birth_date->format('d/m/Y') : 'No registrado' }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter">Género</p>
-                    <p class="text-lg font-medium text-zinc-900 dark:text-white mt-1">{{ $patient->gender }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter">Ocupación</p>
-                    <p class="text-lg font-medium text-zinc-900 dark:text-white mt-1">{{ $patient->occupation ?? 'No registrada' }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter">Edad Actual</p>
-                    <p class="text-lg font-medium text-zinc-900 dark:text-white mt-1">{{ $patient->getAge() }} años</p>
-                </div>
+        {{-- Header Seccional --}}
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">{{ __('Ficha Clínica Detallada') }}</h2>
+            <div class="flex gap-2">
+                <flux:badge color="zinc" size="sm" variant="outline">{{ __('ID: ' . $patient->id) }}</flux:badge>
+                <flux:badge color="indigo" size="sm">{{ __('Estado: Activo') }}</flux:badge>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white dark:bg-zinc-900 shadow-sm sm:rounded-lg p-8 border border-zinc-200 dark:border-zinc-700">
-                <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-6">Caracterización del Tinnitus</h2>
-                <div class="space-y-4">
-                    <div class="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                        <span class="text-sm text-zinc-500">Lateralidad</span>
-                        <span class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->laterality }}</span>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {{-- Columna Izquierda: Identificación y Hábitos --}}
+            <div class="lg:col-span-1 space-y-6">
+                {{-- Identificación --}}
+                <flux:card class="p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <flux:icon.user variant="mini" class="text-zinc-400" />
+                        <h3 class="font-bold text-zinc-800 dark:text-zinc-200">{{ __('Identificación Básica') }}</h3>
                     </div>
-                    <div class="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                        <span class="text-sm text-zinc-500">Tipos de Sonido</span>
-                        <div class="flex flex-wrap gap-1 justify-end">
-                            @if(is_array($patient->sound_type))
-                                @foreach($patient->sound_type as $s)
-                                    <span class="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] rounded font-semibold uppercase">{{ $s }}</span>
-                                @endforeach
-                            @else
-                                <span class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->sound_type ?? 'N/D' }}</span>
-                            @endif
+
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{{ __('DNI / Documento') }}</p>
+                            <p class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->dni }}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{{ __('Nacimiento') }}</p>
+                                <p class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->birth_date ? $patient->birth_date->format('d/m/Y') : 'N/D' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{{ __('Género') }}</p>
+                                <p class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->gender ?? 'N/D' }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{{ __('Ocupación') }}</p>
+                            <p class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->occupation ?? 'No registrada' }}</p>
                         </div>
                     </div>
-                    <div class="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                        <span class="text-sm text-zinc-500">Tiempo de Evolución</span>
-                        <span class="text-sm font-semibold text-zinc-900 dark:text-white">{{ $patient->evolution_time }}</span>
-                    </div>
-                </div>
-            </div>
+                </flux:card>
 
-            <div class="bg-white dark:bg-zinc-900 shadow-sm sm:rounded-lg p-8 border border-zinc-200 dark:border-zinc-700">
-                <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-6">Antecedentes Médicos</h2>
-                <div class="space-y-4">
-                    <div>
-                        <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter mb-2">Comorbilidades</p>
-                        <div class="flex flex-wrap gap-2">
-                            @if($patient->comorbidities)
-                                @foreach($patient->comorbidities as $c)
-                                    <span class="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-full font-medium">{{ $c }}</span>
-                                @endforeach
-                            @else
-                                <span class="text-xs text-zinc-400">Ninguna registrada</span>
-                            @endif
+                {{-- Hábitos y Calidad de Vida --}}
+                <flux:card class="p-6 bg-zinc-50/50 dark:bg-zinc-900/50">
+                    <div class="flex items-center gap-3 mb-4">
+                        <flux:icon.bolt variant="mini" class="text-amber-500" />
+                        <h3 class="font-bold text-zinc-800 dark:text-zinc-200">{{ __('Hábitos y Calidad de Vida') }}</h3>
+                    </div>
+
+                    <div class="space-y-5">
+                        <x-clinical.level-indicator label="Tabaquismo" :value="$patient->habits?->smoking_level" color="orange" />
+                        <x-clinical.level-indicator label="Alcohol" :value="$patient->habits?->alcohol_level" color="blue" />
+                        <x-clinical.level-indicator label="Cafeína" :value="$patient->habits?->coffee_level" color="amber" />
+                        
+                        <flux:separator class="my-2" />
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <x-clinical.stat-box label="Sueño (0-10)" :value="$patient->clinicalHistory?->sleep_quality ?? 0" icon="moon" color="indigo" />
+                            <x-clinical.stat-box label="Estrés (0-10)" :value="$patient->clinicalHistory?->stress_level ?? 0" icon="fire" color="red" />
                         </div>
                     </div>
-                    <div>
-                        <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter mb-1">Medicamentos</p>
-                        <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ $patient->medications ?? 'Sin registro' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold text-zinc-500 uppercase tracking-tighter mb-1">Salud Mental / Sueño</p>
-                        <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ $patient->mental_health_context ?? 'Sin registro' }}</p>
-                    </div>
-                </div>
+                </flux:card>
             </div>
-        </div>
 
-        <div class="bg-indigo-600 rounded-lg p-6 text-white shadow-lg">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-bold">Estado del Gemelo Digital</h3>
-                    <p class="text-sm text-indigo-100 mt-1">
-                        {{ $patient->user_id ? 'Vinculado correctamente con la cuenta de ' . $patient->name : 'Este paciente aún no tiene una cuenta vinculada para refinamiento remoto.' }}
-                    </p>
+            {{-- Columna Central/Derecha: Datos Clínicos Profundos --}}
+            <div class="lg:col-span-2 space-y-6">
+                {{-- Origen y Sintomatología --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <flux:card class="p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <flux:icon.clock variant="mini" class="text-indigo-500" />
+                            <h3 class="font-bold text-zinc-800 dark:text-zinc-200">{{ __('Origen del Cuadro') }}</h3>
+                        </div>
+
+                        <div class="space-y-4 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">{{ __('Fecha de Inicio') }}</span>
+                                <span class="font-semibold">{{ $patient->onsetCause?->onset_date ? $patient->onsetCause?->onset_date->format('M Y') : 'N/D' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">{{ __('Tipo de Inicio') }}</span>
+                                <flux:badge size="sm" variant="subtle" color="zinc">{{ $patient->onsetCause?->onset_type ?? 'N/D' }}</flux:badge>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">{{ __('Intensidad Inicial (EVA)') }}</span>
+                                <span class="font-bold text-indigo-600">{{ $patient->onsetCause?->initial_intensity_eva ?? 0 }}/10</span>
+                            </div>
+                            
+                            <div class="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <p class="text-[10px] uppercase font-bold text-zinc-400 mb-2">{{ __('Gatillos Identificados') }}</p>
+                                <div class="flex flex-wrap gap-1">
+                                    @php 
+                                        $triggers = [
+                                            'Trauma Craneal' => $patient->onsetCause?->has_head_trauma,
+                                            'Meningitis' => $patient->onsetCause?->has_meningitis,
+                                            'Meniere' => $patient->onsetCause?->has_meniere,
+                                            'Parálisis Facial' => $patient->onsetCause?->has_facial_paralysis,
+                                            'Vértigo' => $patient->onsetCause?->has_vertigo,
+                                        ];
+                                    @endphp
+                                    @forelse(array_filter($triggers) as $label => $active)
+                                        <flux:badge color="red" size="sm" variant="subtle">{{ $label }}</flux:badge>
+                                    @empty
+                                        <span class="text-xs text-zinc-400 italic">{{ __('Ningún gatillo severo reportado') }}</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                    </flux:card>
+
+                    <flux:card class="p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <flux:icon.speaker-wave variant="mini" class="text-blue-500" />
+                            <h3 class="font-bold text-zinc-800 dark:text-zinc-200">{{ __('Exposición y Entorno') }}</h3>
+                        </div>
+
+                        <div class="space-y-4 text-sm">
+                            <x-clinical.level-indicator label="Ruido Laboral" :value="$patient->exposure?->occupational_noise_level" color="blue" />
+                            <x-clinical.level-indicator label="Ruido Recreativo" :value="$patient->exposure?->leisure_noise_level" color="indigo" />
+                            
+                            <flux:separator class="my-2" />
+                            
+                            <div class="grid grid-cols-2 gap-4 text-center">
+                                <div>
+                                    <p class="text-[9px] uppercase font-bold text-zinc-400 mb-1">{{ __('Exposición') }}</p>
+                                    <p class="text-sm font-bold text-zinc-700 dark:text-zinc-300">{{ $patient->exposure?->noise_duration_years ?? 0 }} años</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase font-bold text-zinc-400 mb-1">{{ __('Protección') }}</p>
+                                    <flux:badge size="sm" :color="$patient->exposure?->protection_used ? 'green' : 'red'">
+                                        {{ $patient->exposure?->protection_used ? 'Sí' : 'No' }}
+                                    </flux:badge>
+                                </div>
+                            </div>
+                        </div>
+                    </flux:card>
                 </div>
-                @if(!$patient->user_id)
-                    <button class="px-4 py-2 bg-white text-indigo-600 rounded font-bold text-sm shadow hover:bg-indigo-50 transition-colors">Vincular Cuenta</button>
-                @endif
+
+                {{-- Historia Médica y Ototoxicidad --}}
+                <flux:card class="p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <flux:icon.beaker variant="mini" class="text-emerald-500" />
+                        <h3 class="font-bold text-zinc-800 dark:text-zinc-200">{{ __('Análisis de Comorbilidades y Ototoxicidad') }}</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 mb-3 tracking-widest">{{ __('Antecedentes Médicos') }}</p>
+                            <div class="space-y-2">
+                                @php
+                                    $medical = [
+                                        'Hipertensión' => $patient->clinicalHistory?->has_hypertension,
+                                        'Insuf. Cardíaca' => $patient->clinicalHistory?->has_heart_failure,
+                                        'Reumatismo' => $patient->clinicalHistory?->has_rheumatism,
+                                        'Antecedente Familiar' => $patient->clinicalHistory?->family_hearing_loss,
+                                    ];
+                                @endphp
+                                @foreach($medical as $label => $val)
+                                    <div class="flex items-center gap-2">
+                                        <flux:icon.check-circle variant="mini" class="{{ $val ? 'text-emerald-500' : 'text-zinc-200 dark:text-zinc-800' }}" />
+                                        <span class="text-xs {{ $val ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-400' }}">{{ $label }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 mb-3 tracking-widest">{{ __('Potencial Ototóxico') }}</p>
+                            <div class="space-y-2">
+                                @php
+                                    $ototoxic = [
+                                        'Aminoglucósidos' => $patient->clinicalHistory?->uses_aminoglycosides,
+                                        'Salicilatos (Aspirina)' => $patient->clinicalHistory?->uses_salicylates,
+                                        'Diuréticos de asa' => $patient->clinicalHistory?->uses_loop_diuretics,
+                                        'Quinina' => $patient->clinicalHistory?->uses_quinine,
+                                    ];
+                                @endphp
+                                @foreach($ototoxic as $label => $val)
+                                    <div class="flex items-center gap-2">
+                                        <flux:icon.exclamation-circle variant="mini" class="{{ $val ? 'text-red-500 animate-pulse' : 'text-zinc-200 dark:text-zinc-800' }}" />
+                                        <span class="text-xs {{ $val ? 'text-red-600 font-bold' : 'text-zinc-400' }}">{{ $label }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 mb-1">{{ __('Medicación Actual') }}</p>
+                            <p class="text-xs text-zinc-600 dark:text-zinc-400 italic">
+                                {{ $patient->clinicalHistory?->medications ?: 'Ninguna registrada' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-zinc-400 mb-1">{{ __('Contexto Salud Mental') }}</p>
+                            <p class="text-xs text-zinc-600 dark:text-zinc-400 italic">
+                                {{ $patient->clinicalHistory?->mental_health_context ?: 'Sin observaciones' }}
+                            </p>
+                        </div>
+                    </div>
+                </flux:card>
             </div>
         </div>
     </div>

@@ -21,7 +21,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // 1. Perfil Personal y Clínico
         Route::get('/personal', function ($patientId) {
-            $patient = \App\Models\Patient::findOrFail($patientId);
+            $patient = \App\Models\Patient::with(['habits', 'exposure', 'onsetCause', 'clinicalHistory'])
+                ->findOrFail($patientId);
             return view('patient.personal', ['patientId' => $patientId, 'patient' => $patient]);
         })->name('personal');
 

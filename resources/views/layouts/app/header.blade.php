@@ -4,57 +4,31 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
-
-            <x-app-logo href="{{ route('patients.index') }}" wire:navigate />
-
-            <flux:navbar class="-mb-px max-lg:hidden">
-                <flux:navbar.item icon="users" :href="route('patients.index')" :current="request()->routeIs('patients.index')" wire:navigate>
-                    {{ __('Gestión de Pacientes') }}
-                </flux:navbar.item>
-            </flux:navbar>
-
-            <flux:spacer />
-
-            <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('Buscar')" position="bottom">
-                    <flux:navbar.item class="h-10! [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Buscar')" />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Repositorio')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repositorio')"
-                    />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Documentación')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentación')"
-                    />
-                </flux:tooltip>
-            </flux:navbar>
-
-            <x-desktop-user-menu />
-        </flux:header>
-
-        <!-- Mobile Menu -->
-        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
+        <flux:sidebar sticky collapsible="desktop" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:sidebar.header class="flex items-center gap-2">
                 <x-app-logo :sidebar="true" href="{{ route('patients.index') }}" wire:navigate />
-                <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
+                <flux:sidebar.collapse />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Plataforma')">
+                <flux:sidebar.group :heading="__('Gestión Clínica')">
                     <flux:sidebar.item icon="users" :href="route('patients.index')" :current="request()->routeIs('patients.index')" wire:navigate>
-                        {{ __('Gestión de Pacientes')  }}
+                        {{ __('Pacientes') }}
+                    </flux:sidebar.item>
+
+
+
+                    @if(auth()->user()->role === 'patient')
+                        <flux:sidebar.item icon="layout-grid" :href="route('my-tinnitus')" :current="request()->routeIs('my-tinnitus')" wire:navigate>
+                            {{ __('Mi Tinnitus') }}
+                        </flux:sidebar.item>
+                    @endif
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Sistema')" class="mt-4">
+                    <flux:sidebar.item icon="arrow-path" href="#">
+                        {{ __('Gemelo Digital') }}
+                        <flux:badge size="sm" color="indigo" class="ml-auto text-[8px] uppercase">Alpha</flux:badge>
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
@@ -62,16 +36,53 @@
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repositorio') }}
+                <flux:sidebar.item icon="cog" :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>
+                    {{ __('Configuración') }}
                 </flux:sidebar.item>
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentación') }}
+                
+                <flux:sidebar.item icon="question-mark-circle" href="#">
+                    {{ __('Ayuda') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
+
+            <flux:separator />
+
+            <div class="p-3 hidden lg:block">
+                <flux:dropdown position="right" align="bottom">
+                    <flux:button variant="ghost" class="w-full px-2! flex items-center gap-3">
+                        <flux:avatar :name="auth()->user()->name" :initials="auth()->user()->initials()" size="sm" />
+                        <div class="flex-1 text-left truncate">
+                            <p class="text-xs font-bold truncate">{{ auth()->user()->name }}</p>
+                            <p class="text-[10px] text-zinc-500 truncate">{{ auth()->user()->email }}</p>
+                        </div>
+                        <flux:icon.chevron-up-down variant="mini" class="size-4 text-zinc-400" />
+                    </flux:button>
+
+                    <flux:menu class="w-64">
+                        <flux:menu.item :href="route('profile.edit')" icon="user" wire:navigate>{{ __('Mi Perfil') }}</flux:menu.item>
+                        <flux:menu.separator />
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle" color="red">
+                                {{ __('Cerrar Sesión') }}
+                            </flux:menu.item>
+                        </form>
+                    </flux:menu>
+                </flux:dropdown>
+            </div>
         </flux:sidebar>
 
-        {{ $slot }}
+        {{-- Mobile Header --}}
+        <flux:header class="lg:hidden">
+            <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
+            <x-app-logo href="{{ route('patients.index') }}" wire:navigate />
+            <flux:spacer />
+            <x-desktop-user-menu />
+        </flux:header>
+
+        <flux:main class="px-4 py-6 md:px-8">
+            {{ $slot }}
+        </flux:main>
 
         @persist('toast')
             <flux:toast.group>

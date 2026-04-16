@@ -2,50 +2,74 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Patient extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'dni',
         'name',
+        'dni',
         'birth_date',
         'gender',
         'occupation',
-        'laterality',
-        'sound_type',
-        'evolution_time',
-        'comorbidities',
-        'mental_health_context',
-        'medications',
         'address',
         'city',
         'province',
         'phone',
+        'civil_status',
+        'has_children',
+        'work_status',
+        'work_hours',
+        'other_disabilities',
+        'laterality',
+        'sound_type',
         'doctor_id',
-        'user_id',
-        'age', // Keep for compatibility if needed
-        'noise_exposure',
-        'tinnitus_symptom',
-        'vertigo_symptom',
+        'user_id'
     ];
 
     protected $casts = [
         'birth_date' => 'date',
-        'comorbidities' => 'array',
         'sound_type' => 'array',
-        'noise_exposure' => 'boolean',
-        'tinnitus_symptom' => 'boolean',
-        'vertigo_symptom' => 'boolean',
+        'has_children' => 'boolean',
     ];
 
     public function getAge()
     {
-        return $this->birth_date ? $this->birth_date->age : $this->age;
+        return Carbon::parse($this->birth_date)->age;
+    }
+
+    // Relaciones Clínicas Normalizadas
+    public function habits()
+    {
+        return $this->hasOne(PatientHabit::class);
+    }
+
+    public function exposure()
+    {
+        return $this->hasOne(PatientExposure::class);
+    }
+
+    public function onsetCause()
+    {
+        return $this->hasOne(PatientOnsetCause::class);
+    }
+
+    public function clinicalHistory()
+    {
+        return $this->hasOne(PatientClinicalHistory::class);
     }
 
     public function sessions()
     {
         return $this->hasMany(PatientSession::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

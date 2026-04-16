@@ -41,35 +41,6 @@ new class extends Component
                 </a>
             </div>
         </div>
-
-        <div class="mt-4">
-            <flux:navbar class="-mb-px">
-                <flux:navbar.item icon="user" :href="route('patients.personal', $patientId)" :current="request()->routeIs('patients.personal')" wire:navigate>
-                    Paciente
-                </flux:navbar.item>
-
-                <flux:navbar.item icon="chart-bar" :href="route('patients.audiometry', $patientId)" :current="request()->routeIs('patients.audiometry')" wire:navigate>
-                    Audiometría
-                </flux:navbar.item>
-
-                <flux:navbar.item icon="clipboard-document-check" :href="route('patients.tinnitus-profile', $patientId)" :current="request()->routeIs('patients.tinnitus-profile')" wire:navigate>
-                    Perfil de Tinnitus
-                </flux:navbar.item>
-
-                <flux:navbar.item icon="square-3-stack-3d" :href="route('patients.tinnitus-mapping', $patientId)" :current="request()->routeIs('patients.tinnitus-mapping')" wire:navigate>
-                    Mapeo
-                </flux:navbar.item>
-
-                <flux:navbar.item icon="presentation-chart-line" :href="route('patients.consultation', $patientId)" :current="request()->routeIs('patients.consultation')" wire:navigate>
-                    Gráficos de Tinnitus
-                </flux:navbar.item>
-
-                <flux:navbar.item icon="chart-pie" :href="route('patients.indicators', $patientId)" :current="request()->routeIs('patients.indicators')" wire:navigate>
-                    Indicadores
-                </flux:navbar.item>
-
-
-            </flux:navbar>
         </div>
     </div>
 </div>
