@@ -48,12 +48,15 @@ new class extends Component
     public $lastLeftMapping = null;
     public $lastRightMapping = null;
 
+    public $patient = null;
+
     public function mount($patientId = null)
     {
-        $this->patientId = $patientId;
-
-        // Cargar último mapping para correlación
+        $this->patient_id = $patientId;
         if ($patientId) {
+            $this->patient = \App\Models\Patient::find($patientId);
+            
+            // Cargar último mapping para correlación
             $leftM = TinnitusMapping::where('patient_id', $patientId)
                 ->whereIn('ear', ['OI', 'ambos'])->latest()->first();
             $this->lastLeftMapping = $leftM ? $leftM->created_at->diffForHumans() : null;
@@ -94,21 +97,20 @@ new class extends Component
     {
         $intensities = ['Mínimo', 'Leve', 'Moderado', 'Intenso', 'Muy intenso'];
 
-        // CÁLCULO ACTUALIZADO: Sumamos los nuevos factores
-        // Cada checkbox verdadero suma puntos extra de penalización
-        $raw = ($this->stress * 20) 
-             + (($this->sleep - 1) * 20) 
-             + ($this->noise * 12) 
-             + (($this->health - 1) * 12)  // Salud invertida: 1 = Bueno, 5 = Malo
-             + ($this->alc ? 30 : 0)       // Alcohol pasa a boolean (+30 pts)
-             + ($this->fatigue * 15)       // Cansancio suma hasta 75 pts
-             + ($this->puna ? 25 : 0)      // La puna castiga 25 pts
-             + ($this->cold ? 20 : 0)      // Resfrío castiga 20 pts
-             + ($this->throat ? 15 : 0);   // Dolor de garganta castiga 15 pts
+        // 1. Factores Sistémicos (Sliders 1-5): Cada uno aporta hasta 10 pts. (Max: 50)
+        $slidersPts = (($this->stress - 1) * 2.5)
+                    + (($this->sleep - 1) * 2.5)
+                    + (($this->noise - 1) * 2.5)
+                    + (($this->health - 1) * 2.5)
+                    + (($this->fatigue - 1) * 2.5);
 
-        // Como agregamos más variables, el máximo "raw" posible subió a ~500. 
-        // Dividimos por 500 para normalizar a escala de 0 a 100.
-        $this->index = min(100, round($raw * 100 / 500));
+        // 2. Síntomas Físicos (Checkboxes): Pesos específicos (Max: 50)
+        $symptomsPts = ($this->alc ? 10 : 0)
+                     + ($this->puna ? 10 : 0)
+                     + ($this->throat ? 10 : 0)
+                     + ($this->cold ? 20 : 0);
+
+        $this->index = round($slidersPts + $symptomsPts);
 
         // Índice por oído (mismo cálculo base + ajuste por frecuencia percibida)
         $freqBoost = ['Grave ~500Hz' => 0, 'Medio ~2kHz' => 4, 'Agudo ~4kHz' => 8, 'Muy agudo ~8kHz' => 10];
@@ -118,45 +120,15 @@ new class extends Component
         $this->leftIndex  = min(100, $this->index + $leftBoost);
         $this->rightIndex = min(100, $this->index + $rightBoost);
 
-        $this->leftEarVal  = $intensities[min(4, max(0, round(($this->stress + $this->noise) / 2) - 1))];
         $this->rightEarVal = $intensities[min(4, max(0, round(($this->stress + $this->sleep) / 2) - 1))];
-
-        // Badge y recomendaciones (basadas en índice global)
-        if ($this->index >= 70) {
-            $this->statusBadge = ['color' => '#E24B4A', 'bg' => '#FCEBEB', 'text' => '#A32D2D', 'label' => 'Condición muy desfavorable', 'desc' => 'Alta probabilidad de resultados no confiables. Se recomienda reprogramar.'];
-            $this->recommendations = [
-                ['c' => '#E24B4A', 't' => 'Considerar reprogramar la audiometría para un día de mejor estado.'],
-                ['c' => '#E24B4A', 't' => 'Si se procede, marcar todas las frecuencias como de baja confiabilidad.'],
-                ['c' => '#BA7517', 't' => 'Iniciar con acufenometría antes de cualquier medición de umbral.'],
-            ];
-        } elseif ($this->index >= 45) {
-            $this->statusBadge = ['color' => '#D85A30', 'bg' => '#FAECE7', 'text' => '#993C1D', 'label' => 'Condición desfavorable', 'desc' => 'El tinnitus y los síntomas físicos pueden interferir gravemente.'];
-            $this->recommendations = [
-                ['c' => '#BA7517', 't' => 'Realizar acufenometría al inicio: mapear frecuencia e intensidad exacta.'],
-                ['c' => '#BA7517', 't' => 'Chequear permeabilidad de la Trompa de Eustaquio debido a congestión.'],
-                ['c' => '#639922', 't' => 'Usar tonos pulsados o modulados en lugar de tono continuo.'],
-            ];
-        } elseif ($this->index >= 25) {
-            $this->statusBadge = ['color' => '#BA7517', 'bg' => '#FAEEDA', 'text' => '#854F0B', 'label' => 'Condición aceptable', 'desc' => 'Proceder con precaución. Documentar factores de riesgo.'];
-            $this->recommendations = [
-                ['c' => '#639922', 't' => 'Proceder con protocolo estándar con atención extra en zonas afectadas.'],
-                ['c' => '#639922', 't' => 'Ofrecer pausa entre frecuencias si el paciente siente fatiga.'],
-            ];
-        } else {
-            $this->statusBadge = ['color' => '#1D9E75', 'bg' => '#E1F5EE', 'text' => '#0F6E56', 'label' => 'Condición favorable', 'desc' => 'Buenas condiciones para una audiometría confiable hoy.'];
-            $this->recommendations = [
-                ['c' => '#1D9E75', 't' => 'Condiciones óptimas. Proceder con protocolo estándar.'],
-                ['c' => '#1D9E75', 't' => 'Registrar el perfil de tinnitus como línea de base para próximas sesiones.'],
-            ];
-        }
     }
 
     public function save()
     {
-        if (!$this->patientId) return;
+        if (!$this->patient_id) return;
 
         TinnitusProfile::create([
-            'patient_id'          => $this->patientId,
+            'patient_id'          => $this->patient_id,
             'initiated_by'        => Auth::id(),
             'affected_ears'       => $this->affectedEars,
             'sleep_quality'       => $this->sleep,
@@ -176,7 +148,6 @@ new class extends Component
             'right_index'         => $this->rightIndex,
             'left_ear_intensity'  => $this->leftEarVal,
             'right_ear_intensity' => $this->rightEarVal,
-            'recommendations'     => $this->recommendations,
         ]);
 
         Flux::toast(
@@ -189,191 +160,181 @@ new class extends Component
     }
 }; ?>
 
-<div class="tinnitus-stage-1">
-    <style>
-        .stage-1-container { font-family: 'Inter', sans-serif; --color-background-primary: white; --color-background-secondary: #f8fafc; --color-border-tertiary: #e2e8f0; --color-text-primary: #1e293b; --color-text-secondary: #475569; --color-text-tertiary: #64748b; --border-radius-lg: 12px; --border-radius-md: 8px; }
-        .screen { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; border: 1px solid var(--color-border-tertiary); }
-        .section-title { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; }
-        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .row label { font-size: 13px; color: var(--color-text-secondary); min-width: 140px; }
-        .row input[type=range] { flex: 1; accent-color: #1D9E75; }
-        .row .val { font-size: 13px; font-weight: 500; color: var(--color-text-primary); min-width: 28px; text-align: right; }
-        .index-box { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 16px; margin-bottom: 1rem; }
-        .index-num { font-size: 36px; font-weight: 500; min-width: 56px; text-align: center; }
-        .index-label { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
-        .badge { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 500; margin-bottom: 4px; }
-        .freq-row { display: flex; gap: 8px; margin-bottom: 10px; }
-        .freq-btn { flex: 1; font-size: 12px; padding: 6px 4px; border-radius: var(--border-radius-md); border: 1px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; text-align: center; transition: all .15s; }
-        .freq-btn.active { border-color: #5DCAA5; color: #0F6E56; background: #E1F5EE; font-weight: 500; }
-        .ear-row { display: flex; gap: 8px; margin-bottom: 14px; }
-        .ear-card { flex: 1; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; cursor: pointer; transition: all .2s; }
-        .ear-card.active { border-color: #1D9E75; border-width: 2px; box-shadow: 0 0 0 1px #1D9E75; }
-        .ear-label { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 4px; }
-        .ear-val { font-size: 16px; font-weight: 500; color: var(--color-text-primary); }
-        .ear-sub { font-size: 10px; color: var(--color-text-tertiary); margin-top: 4px; }
-        .recommendation { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
-        .rec-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
-        .rec-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-        hr { border: none; border-top: 1px solid var(--color-border-tertiary); margin: 14px 0; }
-        button.cta { width: 100%; padding: 12px; border-radius: var(--border-radius-md); border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px; transition: opacity .2s; }
-        .ear-selector { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--color-border-tertiary); padding-bottom: 12px; }
-        .ear-selector button { flex: 1; padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid var(--color-border-tertiary); background: #f1f5f9; color: #64748b; font-weight: 500; }
-        .ear-selector button.active { background: #1D9E75; color: white; border-color: #1D9E75; }
-        
-        /* Nuevos estilos para los checkboxes */
-        .checkbox-group { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
-        .checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; margin:0;}
-        .checkbox-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #1D9E75; cursor: pointer; }
-        .checkbox-row span { font-size: 13px; color: var(--color-text-secondary); }
-    </style>
-
-    <div class="stage-1-container">
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:0 0 12px;text-transform:uppercase;letter-spacing:.06em">Etapa 1: Perfil Tinnitus Pre-audiometría</p>
-
-        <div class="ear-selector">
-            <button type="button" wire:click="setActiveEar('left')" class="{{ $activeEar === 'left' ? 'active' : '' }}">Oído Izquierdo</button>
-            <button type="button" wire:click="setActiveEar('right')" class="{{ $activeEar === 'right' ? 'active' : '' }}">Oído Derecho</button>
-        </div>
-
-        <div class="screen">
-            <p class="section-title">Resumen por oído (clic para configurar)</p>
-            
-            <div class="ear-row">
-                <div class="ear-card {{ $activeEar === 'left' ? 'active' : '' }}" wire:click="setActiveEar('left')">
-                    <div class="flex justify-between items-start">
-                        <div class="ear-label">Oído izquierdo</div>
-                        <div class="text-[10px] font-bold {{ $leftIndex >= 45 ? 'text-red-500' : 'text-green-600' }}">{{ $leftIndex }}/100</div>
-                    </div>
-                    <div class="ear-val">{{ $leftEarVal }}</div>
-                    <div class="ear-sub">{{ $leftFreq }}</div>
-                    @if($lastLeftMapping)
-                        <div class="ear-sub italic text-[9px]">Último mapeo: {{ $lastLeftMapping }}</div>
-                    @endif
-                </div>
-
-                <div class="ear-card {{ $activeEar === 'right' ? 'active' : '' }}" wire:click="setActiveEar('right')">
-                    <div class="flex justify-between items-start">
-                        <div class="ear-label">Oído derecho</div>
-                        <div class="text-[10px] font-bold {{ $rightIndex >= 45 ? 'text-red-500' : 'text-green-600' }}">{{ $rightIndex }}/100</div>
-                    </div>
-                    <div class="ear-val">{{ $rightEarVal }}</div>
-                    <div class="ear-sub">{{ $rightFreq }}</div>
-                    @if($lastRightMapping)
-                        <div class="ear-sub italic text-[9px]">Último mapeo: {{ $lastRightMapping }}</div>
-                    @endif
-                </div>
-            </div>
-
-            <hr>
-
-            <p class="section-title">Configuración: {{ $activeEar === 'left' ? 'Oído Izquierdo' : 'Oído Derecho' }}</p>
-
-            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:10px">Frecuencia percibida en este oído</p>
-            <div class="freq-row">
-                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Grave ~500Hz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Grave ~500Hz' ? 'active' : '' }}">Grave</button>
-                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Medio ~2kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Medio ~2kHz' ? 'active' : '' }}">Medio</button>
-                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Agudo ~4kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Agudo ~4kHz' ? 'active' : '' }}">Agudo</button>
-                <button type="button" wire:click="setFreq('{{ $activeEar }}', 'Muy agudo ~8kHz')" class="freq-btn {{ ($activeEar === 'left' ? $leftFreq : $rightFreq) === 'Muy agudo ~8kHz' ? 'active' : '' }}">Muy agudo</button>
-            </div>
-
-            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:20px">Factores sistémicos (aplica a ambos)</p>
-
-            <div class="row">
-                <label>Falta de sueño</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="sleep">
-                <span class="val">{{ $sleep }}/5</span>
-            </div>
-            <div class="row">
-                <label>Nivel de estrés</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="stress">
-                <span class="val">{{ $stress }}/5</span>
-            </div>
-            <div class="row">
-                <label>Exposición a ruido</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="noise">
-                <span class="val">{{ $noise }}/5</span>
-            </div>
-            <div class="row">
-                <label>Estado de salud</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="health">
-                <span class="val">{{ $health }}/5</span>
-            </div>
-
-            <!-- NUEVO SLIDER: Cansancio Físico -->
-            <div class="row">
-                <label>Cansancio físico</label>
-                <input type="range" min="1" max="5" step="1" wire:model.live="fatigue">
-                <span class="val">{{ $fatigue }}/5</span>
-            </div>
-
-            <!-- NUEVA SECCIÓN: Tildes de síntomas físicos -->
-            <p class="section-title" style="text-transform:none; font-size:12px; margin-top:20px; color:var(--color-text-primary); font-weight:600;">
-                Síntomas físicos (Marcar si presenta)
+<div class="space-y-6">
+    {{-- Header de Contexto --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-xl font-bold text-zinc-900 dark:text-white">{{ __('Perfil Diagnóstico de Tinnitus') }}</h2>
+            <p class="text-xs text-zinc-500 mt-1">
+                {{ __('Evaluación de confiabilidad para') }}: <span class="font-semibold text-zinc-700 dark:text-zinc-300">{{ $patient?->name }}</span>
             </p>
-            <div class="checkbox-group">
-                <label class="checkbox-row">
-                    <input type="checkbox" wire:model.live="alc">
-                    <span>Consumo de Alcohol / Resaca</span>
-                </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" wire:model.live="puna">
-                    <span>Sensación de Puna / Mal de altura</span>
-                </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" wire:model.live="cold">
-                    <span>Resfrío o Congestión nasal</span>
-                </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" wire:model.live="throat">
-                    <span>Dolor de garganta / Infección</span>
-                </label>
-            </div>
         </div>
+        <flux:badge color="zinc" variant="outline" size="sm" icon="clock">
+            {{ now()->format('d/m/Y') }}
+        </flux:badge>
+    </div>
 
-        <div class="index-box">
-            <div class="index-num" @style(['color: ' . $statusBadge['color']])>{{ $index }}</div>
-            <div class="index-label">
-                <div class="badge" @style(['background: ' . $statusBadge['bg'], 'color: ' . $statusBadge['text']])>{{ $statusBadge['label'] }}</div>
-                <div style="font-size:12px;margin-top:2px">{{ $statusBadge['desc'] }}</div>
-            </div>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start overflow-hidden">
+        {{-- Columna Izquierda: Oídos y Resultado (lg:col-span-5) --}}
+        <div class="lg:col-span-5 space-y-6">
+            <flux:card class="p-5">
+                <flux:heading size="sm" class="mb-4">{{ __('Configuración por Oído') }}</flux:heading>
+                
+                {{-- Selector de Oído --}}
+                <div class="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg mb-6">
+                    <button type="button" wire:click="setActiveEar('left')" 
+                        class="flex-1 py-1.5 text-xs font-bold rounded-md transition-all {{ $activeEar === 'left' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700' }}">
+                        {{ __('Oído Izquierdo') }}
+                    </button>
+                    <button type="button" wire:click="setActiveEar('right')" 
+                        class="flex-1 py-1.5 text-xs font-bold rounded-md transition-all {{ $activeEar === 'right' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700' }}">
+                        {{ __('Oído Derecho') }}
+                    </button>
+                </div>
 
-        <div class="recommendation">
-            <p class="section-title" style="margin-bottom:10px">Recomendaciones para el audiólogo</p>
-            <div class="space-y-2">
-                @foreach($recommendations as $rec)
-                    <div class="rec-item">
-                        <div class="rec-dot" @style(['background: ' . $rec['c']])></div>
-                        <span>{{ $rec['t'] }}</span>
+                {{-- Frecuencia Percibida --}}
+                <div class="space-y-4">
+                    <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">{{ __('Frecuencia Percibida') }}</p>
+                    <flux:radio.group 
+                        wire:model.live="{{ $activeEar === 'left' ? 'leftFreq' : 'rightFreq' }}" 
+                        wire:key="freq-config-{{ $activeEar }}"
+                        variant="segmented" 
+                        size="sm"
+                    >
+                        <flux:radio value="Grave ~500Hz" label="Grave" />
+                        <flux:radio value="Medio ~2kHz" label="Medio" />
+                        <flux:radio value="Agudo ~4kHz" label="Agudo" />
+                        <flux:radio value="Muy agudo ~8kHz" label="Extremo" />
+                    </flux:radio.group>
+                    
+                    @php 
+                        $currentLastMapping = $activeEar === 'left' ? $lastLeftMapping : $lastRightMapping;
+                    @endphp
+                    @if($currentLastMapping)
+                        <div class="flex items-center gap-1.5 text-[10px] text-zinc-400 italic mt-2">
+                            <flux:icon.clock variant="mini" class="size-3" />
+                            {{ __('Último mapeo') }}: {{ $currentLastMapping }}
+                        </div>
+                    @endif
+                </div>
+            </flux:card>
+
+            {{-- Resultado: Índice de Confiabilidad --}}
+            <flux:card class="p-6 flex flex-col items-center justify-center text-center bg-zinc-50/50 dark:bg-zinc-900/50 border-dashed border-zinc-200 dark:border-zinc-700">
+                <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-4">{{ __('Confiabilidad del Examen') }}</p>
+                
+                {{-- Gauge Circular con SVG --}}
+                <div class="relative flex items-center justify-center mb-4" x-data>
+                    <svg class="size-32 transform -rotate-90">
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-zinc-200 dark:text-zinc-800" />
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" 
+                            stroke-dasharray="364.4" 
+                            :style="{ strokeDashoffset: 364.4 - (364.4 * $wire.index / 100) + 'px' }"
+                            class="transition-all duration-500 ease-out {{ $index >= 70 ? 'text-red-500' : ($index >= 45 ? 'text-orange-500' : ($index >= 25 ? 'text-amber-500' : 'text-emerald-500')) }}" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-3xl font-black text-zinc-900 dark:text-white leading-none">{{ $index }}</span>
+                        <span class="text-[9px] font-bold text-zinc-400 mt-1">/ 100</span>
                     </div>
-                @endforeach
+                </div>
+
+                <flux:badge :color="$index >= 70 ? 'red' : ($index >= 45 ? 'orange' : ($index >= 25 ? 'amber' : 'green'))" size="lg" variant="subtle" class="font-bold">
+                    {{ $index >= 70 ? 'Riesgo Crítico' : ($index >= 45 ? 'Desfavorable' : ($index >= 25 ? 'Aceptable' : 'Óptimo')) }}
+                </flux:badge>
+                
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-3 px-4 leading-relaxed">
+                    {{ $index >= 45 ? __('Interferencia clínica probable. Proceder con extrema precaución.') : __('Condiciones favorables para una audiometría confiable.') }}
+                </p>
+            </flux:card>
+        </div>
+
+        {{-- Columna Derecha: Factores Sistémicos (lg:col-span-7) --}}
+        <div class="lg:col-span-7 space-y-6">
+            <flux:card class="p-6">
+                <flux:heading size="sm" class="mb-6">{{ __('Factores Sistémicos y Estilo de Vida') }}</flux:heading>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                    <flux:field>
+                        <flux:label class="flex justify-between">
+                            {{ __('Calidad de Sueño') }}
+                            <span class="text-xs font-bold text-indigo-600">{{ $sleep }}/5</span>
+                        </flux:label>
+                        <flux:input type="range" min="1" max="5" step="1" wire:model.live="sleep" class="mt-2" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label class="flex justify-between">
+                            {{ __('Nivel de Estrés') }}
+                            <span class="text-xs font-bold text-indigo-600">{{ $stress }}/5</span>
+                        </flux:label>
+                        <flux:input type="range" min="1" max="5" step="1" wire:model.live="stress" class="mt-2" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label class="flex justify-between">
+                            {{ __('Exposición a Ruido') }}
+                            <span class="text-xs font-bold text-indigo-600">{{ $noise }}/5</span>
+                        </flux:label>
+                        <flux:input type="range" min="1" max="5" step="1" wire:model.live="noise" class="mt-2" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label class="flex justify-between">
+                            {{ __('Cansancio Físico') }}
+                            <span class="text-xs font-bold text-indigo-600">{{ $fatigue }}/5</span>
+                        </flux:label>
+                        <flux:input type="range" min="1" max="5" step="1" wire:model.live="fatigue" class="mt-2" />
+                    </flux:field>
+                    
+                    <flux:field class="md:col-span-2">
+                        <flux:label class="flex justify-between">
+                            {{ __('Estado General de Salud') }}
+                            <span class="text-xs font-bold text-indigo-600">{{ $health }}/5</span>
+                        </flux:label>
+                        <flux:input type="range" min="1" max="5" step="1" wire:model.live="health" class="mt-2" />
+                    </flux:field>
+                </div>
+
+                <flux:separator class="my-8" />
+
+                {{-- Síntomas Físicos --}}
+                <p class="text-[10px] uppercase font-bold text-zinc-400 tracking-widest mb-4">{{ __('Sintomatología Física Actual') }}</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <flux:checkbox wire:model.live="alc" label="Consumo de Alcohol" />
+                    <flux:checkbox wire:model.live="puna" label="Sensación de Puna" />
+                    <flux:checkbox wire:model.live="cold" label="Resfrío / Congestión" />
+                    <flux:checkbox wire:model.live="throat" label="Dolor de Garganta" />
+                </div>
+            </flux:card>
+
+            {{-- Botón de Guardado --}}
+            <div class="flex justify-end gap-3 pt-4">
+                <flux:button variant="ghost" wire:click="$refresh">{{ __('Restablecer') }}</flux:button>
+                <flux:button variant="primary" icon="check-badge" class="px-8" 
+                    x-data x-on:click="$flux.modal('confirm-save-profile').show()">
+                    {{ __('Archivar Perfil Clínico') }}
+                </flux:button>
             </div>
-            
-            <button x-data x-on:click="$flux.modal('confirm-save-profile').show()" class="cta" style="background:#1D9E75; color:white; width: 100%; margin-top: 12px;">
-                Guardar Perfil de Hoy
-            </button>
         </div>
     </div>
 
-    <!-- Cartel de Confirmación Bonito -->
+    {{-- Modal de Confirmación --}}
     <flux:modal name="confirm-save-profile" class="md:w-96">
         <div class="space-y-6">
             <div>
-                <flux:heading size="lg">Guardar Perfil de Tinnitus</flux:heading>
+                <flux:heading size="lg">{{ __('Guardar Perfil de Tinnitus') }}</flux:heading>
                 <flux:subheading>
-                    ¿Deseas guardar definitivamente el perfil clínico de hoy en la base de datos del paciente?
+                    {{ __('¿Deseas guardar definitivamente el perfil clínico de hoy en la base de datos del paciente?') }}
                 </flux:subheading>
             </div>
 
             <div class="flex gap-2">
                 <flux:spacer />
-
                 <flux:modal.close>
-                    <flux:button variant="ghost">Cancelar</flux:button>
+                    <flux:button variant="ghost">{{ __('Cancelar') }}</flux:button>
                 </flux:modal.close>
-
-                <flux:button wire:click="save" x-on:click="$flux.modal('confirm-save-profile').close()" style="background-color: #1D9E75; color: white; border-color: #1D9E75;">
-                    Sí, Guardar Perfil
+                <flux:button variant="primary" wire:click="save" x-on:click="$flux.modal('confirm-save-profile').close()">
+                    {{ __('Sí, Guardar Perfil') }}
                 </flux:button>
             </div>
         </div>
