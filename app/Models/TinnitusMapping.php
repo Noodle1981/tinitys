@@ -13,6 +13,7 @@ class TinnitusMapping extends Model
         'left_layers_config',
         'right_layers_config',
         'master_volume',
+        'config_version',
     ];
 
     protected $casts = [

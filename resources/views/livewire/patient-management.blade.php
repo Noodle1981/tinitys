@@ -230,7 +230,7 @@ new class extends Component
         </flux:table.rows>
     </flux:table>
 
-    <flux:modal wire:model="showModal" class="min-w-[40rem]">
+    <flux:modal wire:model="showModal" class="min-w-160">
         <div class="space-y-6">
             <div>
                 <h2 class="text-xl font-bold text-zinc-900 dark:text-white">{{ $editing ? 'Editar Paciente' : 'Nuevo Paciente' }}</h2>

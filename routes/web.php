@@ -6,9 +6,11 @@ use Illuminate\Support\Facades\Auth;
 Route::view('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/patients', function () {
+        return view('patients.index');
+    })->name('patients.index');
+
+    Route::redirect('/dashboard', '/patients');
 
     // Patient Context Group
     Route::prefix('patient/{patientId}')->name('patients.')->group(function () {
@@ -57,7 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $patient = $user?->patient; 
-        if (!$patient) return redirect()->route('dashboard');
+        if (!$patient) return redirect()->route('patients.index');
         return view('patient.my-profile', ['patientId' => $patient->id]);
     })->name('my-tinnitus');
 });

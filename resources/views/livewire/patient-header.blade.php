@@ -35,9 +35,9 @@ new class extends Component
             </div>
             
             <div class="flex items-center gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
+                <a href="{{ route('patients.index') }}" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
                     <flux:icon.arrow-left-start-on-rectangle class="size-3" />
-                    Listado de Pacientes
+                    Volver a Gestión
                 </a>
             </div>
         </div>
@@ -53,15 +53,15 @@ new class extends Component
                 </flux:navbar.item>
 
                 <flux:navbar.item icon="clipboard-document-check" :href="route('patients.tinnitus-profile', $patientId)" :current="request()->routeIs('patients.tinnitus-profile')" wire:navigate>
-                    Perfil Tinnitus
+                    Perfil de Tinnitus
                 </flux:navbar.item>
 
                 <flux:navbar.item icon="square-3-stack-3d" :href="route('patients.tinnitus-mapping', $patientId)" :current="request()->routeIs('patients.tinnitus-mapping')" wire:navigate>
-                    Mapeador
+                    Mapeo
                 </flux:navbar.item>
 
                 <flux:navbar.item icon="presentation-chart-line" :href="route('patients.consultation', $patientId)" :current="request()->routeIs('patients.consultation')" wire:navigate>
-                    Gráfica de Tinnitus
+                    Gráficos de Tinnitus
                 </flux:navbar.item>
 
                 <flux:navbar.item icon="chart-pie" :href="route('patients.indicators', $patientId)" :current="request()->routeIs('patients.indicators')" wire:navigate>
