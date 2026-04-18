@@ -1,0 +1,286 @@
+{
+  "@backend_note": "Asegurar que los endpoints entreguen 'options' con este formato para poblar los selectores dinámicos del frontend.",
+  "auth": {
+    "user": {
+      "id": 1,
+      "name": "Dr. House",
+      "email": "doctor@example.com",
+      "role": "doctor",
+      "last_login": "2026-04-16T09:45:00Z"
+    },
+    "token": "mock_jwt_token_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "doctor": {
+    "id": 1,
+    "name": "Dr. House",
+    "specialty": "Audiología Clínica",
+    "license": "MP-12345",
+    "clinic": "Centro Tinitus Avanzado"
+  },
+  "options": {
+    "provinces": [
+      {
+        "label": "Buenos Aires",
+        "value": "buenos_aires"
+      },
+      {
+        "label": "Córdoba",
+        "value": "cordoba"
+      },
+      {
+        "label": "Santa Fe",
+        "value": "santa_fe"
+      },
+      {
+        "label": "Mendoza",
+        "value": "mendoza"
+      },
+      {
+        "label": "San Juan",
+        "value": "san_juan"
+      }
+    ],
+    "cities": [
+      {
+        "label": "CABA",
+        "value": "caba",
+        "province": "buenos_aires"
+      },
+      {
+        "label": "Rosario",
+        "value": "rosario",
+        "province": "santa_fe"
+      },
+      {
+        "label": "Villa María",
+        "value": "villa_maria",
+        "province": "cordoba"
+      },
+      {
+        "label": "San Juan (Capital)",
+        "value": "sj_capital",
+        "province": "san_juan"
+      }
+    ],
+    "laterality": [
+      {
+        "label": "Bilateral",
+        "value": "Bilateral"
+      },
+      {
+        "label": "Izquierdo (OI)",
+        "value": "OI"
+      },
+      {
+        "label": "Derecho (OD)",
+        "value": "OD"
+      }
+    ]
+  },
+  "patients": [
+    {
+      "id": 2,
+      "name": "Omar Olivera",
+      "dni": "28891983",
+      "email": "paciente@example.com",
+      "gender": "Masculino",
+      "age": 42,
+      "birth_date": "1984-05-12",
+      "occupation": "Administrativo",
+      "province": "buenos_aires",
+      "city": "caba",
+      "laterality": "Bilateral",
+      "evolution_years": 3,
+      "diagnosis": "Tinnitus Bilateral Crónico",
+      "hearing_aids_data": {
+        "current_devices": [
+          {
+            "id": "ha_001",
+            "ear": "right",
+            "brand": "Phonak",
+            "model": "Audéo Lumity L90",
+            "type": "RIC",
+            "technology_level": "Premium",
+            "battery": "Rechargeable",
+            "fitting_date": "2023-11-15",
+            "settings": {
+              "gain_control": 85,
+              "channels": 20,
+              "programs": [
+                "Automatic",
+                "Restaurant",
+                "Music",
+                "Tinnitus Masker"
+              ],
+              "tinnitus_masker_active": true
+            },
+            "status": "active",
+            "color_code": "audio-right"
+          },
+          {
+            "id": "ha_002",
+            "ear": "left",
+            "brand": "Phonak",
+            "model": "Audéo Lumity L90",
+            "type": "RIC",
+            "technology_level": "Premium",
+            "battery": "Rechargeable",
+            "fitting_date": "2023-11-15",
+            "settings": {
+              "gain_control": 82,
+              "channels": 20,
+              "programs": [
+                "Automatic",
+                "Restaurant",
+                "Music",
+                "Tinnitus Masker"
+              ],
+              "tinnitus_masker_active": true
+            },
+            "status": "active",
+            "color_code": "audio-left"
+          }
+        ],
+        "maintenance_history": [
+          {
+            "date": "2024-02-10",
+            "action": "Filter replacement",
+            "technician": "Dra. Gomez"
+          }
+        ],
+        "audiometry_history": [
+          {
+            "id": "aud_hist_003",
+            "date": "2024-04-16",
+            "type": "Alta Intensidad (Deep Loss)",
+            "data": {
+              "right": {
+                "125": 85,
+                "250": 90,
+                "500": 95,
+                "1000": 105,
+                "2000": 110,
+                "4000": 115,
+                "8000": null
+              },
+              "left": {
+                "125": 80,
+                "250": 85,
+                "500": 95,
+                "1000": 100,
+                "2000": 105,
+                "4000": 110,
+                "8000": 115
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "Elena Smith",
+      "dni": "35221004",
+      "email": "elena@example.com",
+      "gender": "Femenino",
+      "age": 29,
+      "birth_date": "1997-08-22",
+      "occupation": "Docente",
+      "province": "cordoba",
+      "city": "villa_maria",
+      "laterality": "OI",
+      "evolution_years": 1,
+      "diagnosis": "Tinnitus Unilateral Agudo"
+    },
+    {
+      "id": 15,
+      "name": "Ricardo Gomez",
+      "dni": "12445678",
+      "email": "ricardo@example.com",
+      "gender": "Masculino",
+      "age": 65,
+      "birth_date": "1961-02-10",
+      "occupation": "Jubilado",
+      "province": "mendoza",
+      "city": "mendoza",
+      "laterality": "OD",
+      "evolution_years": 10,
+      "diagnosis": "Tinnitus Presbiacusia"
+    }
+  ],
+  "latest_profile": {
+    "id": 150,
+    "date": "2026-04-16T13:00:00Z",
+    "reliability_index": 82,
+    "factors": {
+      "sleep_quality": 2,
+      "stress_level": 4,
+      "noise_exposure": 3,
+      "health_state": 2,
+      "fatigue_level": 1
+    },
+    "observations": "Paciente refiere aumento de intensidad tras jornada laboral ruidosa. No ha utilizado protección auditiva.",
+    "symptoms": {
+      "alcohol_intake": true,
+      "has_puna": false,
+      "has_cold": false,
+      "has_throat_pain": false
+    },
+    "intensity_eva": {
+      "right_ear": {
+        "label": "Intenso",
+        "value": 80
+      },
+      "left_ear": {
+        "label": "Moderado",
+        "value": 60
+      }
+    },
+    "frequency_perception": "Medio ~2kHz",
+    "recommendations": [
+      {
+        "id": 1,
+        "type": "precaution",
+        "color": "#ef4444",
+        "text": "Evitar entornos ruidosos sin protección auditiva certificada."
+      },
+      {
+        "id": 2,
+        "type": "therapy",
+        "color": "#3b82f6",
+        "text": "Utilizar enmascaradores de ruido blanco (60dB) durante la conciliación del sueño."
+      },
+      {
+        "id": 3,
+        "type": "lifestyle",
+        "color": "#f59e0b",
+        "text": "Reducir el consumo de cafeína, sal y estimulantes durante las próximas 48 horas."
+      }
+    ]
+  },
+  "latest_mapping": {
+    "id": 88,
+    "date": "2026-04-16T13:10:00Z",
+    "right": {
+      "status": "symptomatic",
+      "layers": [
+        { "id": "tono_pulsatil", "vol": 45, "freq": 78, "speed": 60 },
+        { "id": "ruido_banda", "vol": 20, "freq": 40, "speed": null },
+        { "id": "tono_puro", "vol": 0, "freq": 55, "speed": null },
+        { "id": "tono_modulado", "vol": 0, "freq": 62, "speed": 30 }
+      ]
+    },
+    "left": {
+      "status": "healthy",
+      "layers": []
+    }
+  },
+  "api_endpoints_preview": {
+    "login": "POST /api/v1/auth/login",
+    "get_profile": "GET /api/v1/patients/{id}/latest-profile",
+    "save_profile": "POST /api/v1/profiles",
+    "get_indicators": "GET /api/v1/patients/{id}/indicators",
+    "get_patients": "GET /api/v1/patients",
+    "save_patient": "POST /api/v1/patients"
+  }
+}
