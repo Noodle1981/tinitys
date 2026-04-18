@@ -2,6 +2,7 @@
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
+@source '../js/vue-app/**/*.vue';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
@@ -11,17 +12,29 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    /* Tinnitus Project Colors (Migrated from Tailwind 3) */
+    --color-primary-50: #fdfdfc;
+    --color-primary-100: #f7f7f5;
+    --color-primary-200: #eeeeec;
+    --color-primary-300: #dbdbd7;
+    --color-primary-400: #a1a09a;
+    --color-primary-500: #706f6c;
+    --color-primary-600: #555451;
+    --color-primary-700: #3e3e3a;
+    --color-primary-800: #272724;
+    --color-primary-900: #1b1b18;
+    --color-primary-950: #0a0a0a;
+
+    --color-accent-red: #f53003;
+    --color-accent-orange: #ff750f;
+    --color-accent-pink: #f3bec7;
+    --color-accent-blue: #3b82f6;
+
+    --color-audio-right: #EF4444;
+    --color-audio-left: #3B82F6;
+    --color-audio-speech: #FDE047;
+    --color-audio-bg: #FFFFFF;
+    --color-audio-text: #111827;
 
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
@@ -52,7 +65,7 @@
 }
 
 [data-flux-label] {
-    @apply  !mb-0 !leading-tight;
+    @apply mb-0! leading-tight!;
 }
 
 input:focus[data-flux-control],

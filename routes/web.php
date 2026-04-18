@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\Auth;
 Route::view('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/patients', function () {
-        return view('patients.index');
-    })->name('patients.index');
+    Route::get('/patients/{any?}', function () {
+        return view('layouts.vue-app');
+    })->where('any', '.*')->name('patients.index');
 
     Route::redirect('/dashboard', '/patients');
 
