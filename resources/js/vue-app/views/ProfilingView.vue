@@ -21,6 +21,7 @@ import {
 } from 'lucide-vue-next'
 
 const store = useTinnitusStore()
+const loading = ref(false)
 
 // State
 const activeEar = ref('left')
@@ -44,17 +45,24 @@ const perceptions = ref({
   right: 'Medio ~2kHz'
 })
 
-const observations = ref(store.latestProfile?.observations || '')
+const observations = ref('')
 const saveDialogVisible = ref(false)
 
 // Sync from store if exists
-if (store.latestProfile) {
-  factors.value = { ...store.latestProfile.factors }
-  symptoms.value = { ...store.latestProfile.symptoms }
-  if (store.latestProfile.perceptions) {
-    perceptions.value = { ...store.latestProfile.perceptions }
+const hydrateFromStore = () => {
+  if (store.latestProfile) {
+    factors.value = { ...store.latestProfile.factors }
+    symptoms.value = { ...store.latestProfile.symptoms }
+    if (store.latestProfile.perceptions) {
+      perceptions.value = { ...store.latestProfile.perceptions }
+    }
+    observations.value = store.latestProfile.observations || ''
   }
 }
+
+import { onMounted, watch } from 'vue'
+onMounted(hydrateFromStore)
+watch(() => store.latestProfile, hydrateFromStore, { deep: true })
 
 const freqOptions = [
   { label: 'Grave', value: 'Grave ~500Hz' },
@@ -78,7 +86,7 @@ const reliabilityIndex = computed(() => {
                      (symptoms.value.throat ? 10 : 0) +
                      (symptoms.value.cold ? 20 : 0)
 
-  return Math.round(factorPts + symptomPts)
+  return Math.max(0, Math.min(100, Math.round(factorPts + symptomPts)))
 })
 
 const getStatusColor = (val) => {
@@ -96,12 +104,16 @@ const getStatusLabel = (val) => {
 }
 
 const saveProfile = () => {
+  if (!store.selectedPatient) {
+    alert('Debe seleccionar un paciente antes de archivar.')
+    return
+  }
   saveDialogVisible.value = true
 }
 
-const confirmSave = () => {
+const confirmSave = async () => {
+  loading.value = true
   const profile = {
-    date: new Date().toISOString(),
     reliability_index: reliabilityIndex.value,
     factors: { ...factors.value },
     symptoms: { ...symptoms.value },
@@ -109,16 +121,15 @@ const confirmSave = () => {
     perceptions: { ...perceptions.value }
   }
   
-  store.latestProfile = profile
-  store.patientHistory.unshift({
-    id: 'prof_' + Date.now(),
-    date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
-    type: 'Perfilado Tinnitus',
-    data: profile
-  })
-
-  saveDialogVisible.value = false
-  alert('Perfil Clínico archivado correctamente en el Gemelo Digital.')
+  try {
+    await store.saveTinnitusProfile(store.selectedPatient.id, profile)
+    saveDialogVisible.value = false
+    alert('Perfil Clínico archivado correctamente en el Gemelo Digital.')
+  } catch (error) {
+    alert('Error al archivar el perfil clínico.')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -378,7 +389,7 @@ const confirmSave = () => {
   </Dialog>
 </template>
 
-<style>
+<style lang="postcss">
 @reference "../../../css/app.css";
 
 .custom-select-button .p-button {

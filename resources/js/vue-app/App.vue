@@ -94,7 +94,11 @@ const exitEcosystem = () => {
           </div>
           <div class="overflow-hidden">
             <p class="text-xs font-bold truncate">{{ store.selectedPatient.name }}</p>
-            <p class="text-[10px] text-primary-400">DNI: {{ store.selectedPatient.dni }}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+               <p class="text-[10px] text-primary-400">DNI: {{ store.selectedPatient.dni }}</p>
+               <div v-if="store.latestProfile" class="size-1.5 bg-emerald-500 rounded-full" title="Perfil completado"></div>
+               <div v-if="store.latestMapping?.id" class="size-1.5 bg-accent-blue rounded-full" title="Mapeo completado"></div>
+            </div>
           </div>
         </div>
         <button 

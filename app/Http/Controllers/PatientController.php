@@ -6,6 +6,7 @@ use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\TinnitusMapping;
 
 class PatientController extends Controller
 {
@@ -17,7 +18,7 @@ class PatientController extends Controller
         // En un escenario real, filtraríamos por doctor_id
         // $patients = Patient::where('doctor_id', Auth::user()->doctor_id)->get();
         
-        $patients = Patient::with(['clinicalHistory', 'exposure', 'habits'])->get();
+        $patients = Patient::with(['clinicalHistory', 'exposure', 'habits', 'tinnitusProfile', 'tinnitusMapping'])->get();
         
         return response()->json([
             'success' => true,
@@ -63,7 +64,7 @@ class PatientController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Paciente registrado con éxito',
-            'data' => $patient->load(['clinicalHistory', 'exposure', 'habits', 'tinnitusProfile'])
+            'data' => $patient->load(['clinicalHistory', 'exposure', 'habits', 'tinnitusProfile', 'tinnitusMapping'])
         ]);
     }
 
@@ -77,6 +78,7 @@ class PatientController extends Controller
             'exposure', 
             'habits', 
             'tinnitusProfile',
+            'tinnitusMapping',
             'sessions' => function($q) {
                 $q->orderBy('created_at', 'desc');
             },
@@ -107,6 +109,80 @@ class PatientController extends Controller
             'success' => true,
             'message' => 'Sesión de audiometría guardada correctamente',
             'data' => $session
+        ]);
+    }
+
+    /**
+     * Guarda o actualiza el perfilado de tinnitus específico de un paciente.
+     */
+    public function saveProfiling(Request $request, $id)
+    {
+        $patient = Patient::findOrFail($id);
+        
+        $profile = $patient->tinnitusProfile()->updateOrCreate(
+            ['patient_id' => $id],
+            [
+                'initiated_by' => Auth::id() ?? 1, // Fallback para desarrollo
+                'reliability_index' => $request->input('reliability_index'),
+                'sleep_quality' => $request->input('factors.sleep'),
+                'stress_level' => $request->input('factors.stress'),
+                'noise_exposure' => $request->input('factors.noise'),
+                'health_state' => $request->input('factors.health'),
+                'fatigue_level' => $request->input('factors.fatigue'),
+                'has_cold' => $request->input('symptoms.cold'),
+                'has_puna' => $request->input('symptoms.puna'),
+                'has_throat_pain' => $request->input('symptoms.throat'),
+                'alcohol_intake' => $request->input('symptoms.alcohol') ? 1 : 0,
+                'frequency_perception' => $request->input('perceptions.left'), // Simplificación
+                'left_freq_selected' => $request->input('perceptions.left'),
+                'right_freq_selected' => $request->input('perceptions.right'),
+                'recommendations' => [
+                    'observations' => $request->input('observations')
+                ],
+                // Agregar otros campos si se expanden en la vista
+            ]
+        );
+
+        // Opcional: Crear una sesión clínica para el historial
+        $patient->sessions()->create([
+            'type' => 'Perfilado Tinnitus',
+            'audiometry_data' => $request->all(), // Guardamos el snapshot completo
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perfil de tinnitus guardado correctamente',
+            'data' => $profile
+        ]);
+    }
+
+    /**
+     * Guarda la configuración de mapeo sonoro de un paciente.
+     */
+    public function saveMapping(Request $request, $id)
+    {
+        $patient = Patient::findOrFail($id);
+
+        $mapping = $patient->tinnitusMapping()->updateOrCreate(
+            ['patient_id' => $id],
+            [
+                'initiated_by' => Auth::id() ?? 1,
+                'left_layers_config' => $request->input('left.layers'),
+                'right_layers_config' => $request->input('right.layers'),
+                'config_version' => '1.0'
+            ]
+        );
+
+        // Crear registro en historial
+        $patient->sessions()->create([
+            'type' => 'Mapeo Tinnitus',
+            'audiometry_data' => $request->all(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mapeo sonoro archivado correctamente',
+            'data' => $mapping
         ]);
     }
 

@@ -106,9 +106,14 @@ const chartOptions = {
 const impactScore = computed(() => {
   if (!isReady.value) return 0
   const f = store.latestProfile.factors
-  // Stress and Noise increase impact, Sleep and Health decrease it
-  const score = (f.stress + f.noise + f.fatigue) / 3
-  return Math.round(score * 20) // Scale to 100
+  // Stress, Noise and Fatigue increase impact (bad)
+  // Health and Sleep decrease it (good) - Score represents "Harmful Impact"
+  const positiveImpact = (f.health + f.sleep) / 2
+  const negativeImpact = (f.stress + f.noise + f.fatigue) / 3
+  
+  // Normalized score: Higher is worse
+  const total = ((negativeImpact) / (negativeImpact + positiveImpact)) * 100
+  return Math.round(total)
 })
 </script>
 
@@ -276,7 +281,9 @@ const impactScore = computed(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="postcss" scoped>
+@reference "../../../css/app.css";
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onUnmounted, nextTick, watch } from 'vue'
+import { ref, reactive, onUnmounted, nextTick, watch, onMounted } from 'vue'
 import { useTinnitusStore } from '../stores/tinnitusStore'
 import { useTinnitusAudio } from '../composables/useTinnitusAudio'
 import Slider from 'primevue/slider'
@@ -23,6 +23,7 @@ import {
 
 const store = useTinnitusStore()
 const audio = useTinnitusAudio()
+const loading = ref(false)
 
 // State
 const activeEar = ref('left')
@@ -38,12 +39,43 @@ const defaultLayers = () => [
   { id: 'tono_modulado', name: 'Tono Modulado', desc: 'Pulsación de frecuencia', type: 'sweep', freq: 62, vol: 0, speed: 30, color: '#F59E0B' }
 ]
 
-const leftLayers = ref(store.latestMapping.left?.layers.length ? JSON.parse(JSON.stringify(store.latestMapping.left.layers)) : defaultLayers())
-const rightLayers = ref(store.latestMapping.right?.layers.length ? JSON.parse(JSON.stringify(store.latestMapping.right.layers)) : defaultLayers())
+const leftLayers = ref(defaultLayers())
+const rightLayers = ref(defaultLayers())
 
-// Sync ear status
-if (store.latestMapping.left?.status) earStatus.left = store.latestMapping.left.status
-if (store.latestMapping.right?.status) earStatus.right = store.latestMapping.right.status
+// Sync ear status and layers from store
+const hydrateFromStore = () => {
+  if (store.latestMapping) {
+    // Helper function to merge stored layers into default structure
+    const mergeLayers = (defaults, stored) => {
+      const merged = JSON.parse(JSON.stringify(defaults))
+      stored.forEach(sLayer => {
+        const target = merged.find(d => d.id === sLayer.id)
+        if (target) {
+          target.freq = sLayer.freq
+          target.vol = sLayer.vol
+          if (sLayer.speed !== undefined) target.speed = sLayer.speed
+        }
+      })
+      return merged
+    }
+
+    if (store.latestMapping.left) {
+      earStatus.left = store.latestMapping.left.status || 'symptomatic'
+      if (store.latestMapping.left.layers?.length) {
+        leftLayers.value = mergeLayers(defaultLayers(), store.latestMapping.left.layers)
+      }
+    }
+    if (store.latestMapping.right) {
+      earStatus.right = store.latestMapping.right.status || 'symptomatic'
+      if (store.latestMapping.right.layers?.length) {
+        rightLayers.value = mergeLayers(defaultLayers(), store.latestMapping.right.layers)
+      }
+    }
+  }
+}
+
+onMounted(hydrateFromStore)
+watch(() => store.latestMapping, hydrateFromStore, { deep: true })
 
 // Animation Frames
 const waveAnimFrames = {}
@@ -181,22 +213,27 @@ const saveMapping = () => {
   showSaveDialog.value = true
 }
 
-const confirmSave = () => {
-  // Persistence to Store
-  store.latestMapping = {
+const confirmSave = async () => {
+  if (!store.selectedPatient) {
+    alert('Debe seleccionar un paciente antes de guardar.')
+    return
+  }
+  
+  loading.value = true
+  const mappingData = {
     left: { status: earStatus.left, layers: [...leftLayers.value] },
     right: { status: earStatus.right, layers: [...rightLayers.value] }
   }
 
-  store.patientHistory.unshift({
-    id: 'map_' + Date.now(),
-    date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
-    type: 'Mapeo Tinnitus',
-    data: JSON.parse(JSON.stringify(store.latestMapping))
-  })
-
-  showSaveDialog.value = false
-  alert('Configuración de Mapeo guardada correctamente en el Gemelo Digital.')
+  try {
+    await store.saveTinnitusMapping(store.selectedPatient.id, mappingData)
+    showSaveDialog.value = false
+    alert('Configuración de Mapeo guardada correctamente en el Gemelo Digital.')
+  } catch (error) {
+    alert('Error al guardar el mapeo sonoro.')
+  } finally {
+    loading.value = false
+  }
 }
 
 // Ensure audio context starts on first interaction
@@ -454,7 +491,7 @@ const ensureAudioCtx = () => {
   </Dialog>
 </template>
 
-<style>
+<style lang="postcss">
 @reference "../../../css/app.css";
 
 .custom-slider .p-slider-handle, .custom-slider-vol .p-slider-handle, .custom-slider-speed .p-slider-handle {

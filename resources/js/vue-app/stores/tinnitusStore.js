@@ -168,6 +168,47 @@ export const useTinnitusStore = defineStore('tinnitus', {
           // Mapear Equipamiento
           this.hearingAids = data.hearing_aids || []
           
+          // Mapear Perfil de Tinnitus
+          if (data.tinnitus_profile) {
+            const p = data.tinnitus_profile
+            this.latestProfile = {
+              id: p.id,
+              reliability_index: p.reliability_index,
+              factors: {
+                sleep: p.sleep_quality,
+                stress: p.stress_level,
+                noise: p.noise_exposure,
+                health: p.health_state,
+                fatigue: p.fatigue_level
+              },
+              symptoms: {
+                alcohol: !!p.alcohol_intake,
+                puna: !!p.has_puna,
+                cold: !!p.has_cold,
+                throat: !!p.has_throat_pain
+              },
+              perceptions: {
+                left: p.left_freq_selected || p.frequency_perception,
+                right: p.right_freq_selected || p.frequency_perception
+              },
+              observations: p.recommendations?.observations || ''
+            }
+          } else {
+            this.latestProfile = null
+          }
+
+          // Mapear Mapeo de Sonido
+          if (data.tinnitus_mapping) {
+            const m = data.tinnitus_mapping
+            this.latestMapping = {
+              id: m.id,
+              left: { status: 'symptomatic', layers: m.left_layers_config || [] },
+              right: { status: 'symptomatic', layers: m.right_layers_config || [] }
+            }
+          } else {
+            this.latestMapping = { left: { status: 'symptomatic', layers: [] }, right: { status: 'symptomatic', layers: [] } }
+          }
+
           // Cargar última audiometría si existe
           if (this.patientHistory.length > 0) {
             this.audiometryData = JSON.parse(JSON.stringify(this.patientHistory[0].data))
@@ -243,6 +284,31 @@ export const useTinnitusStore = defineStore('tinnitus', {
         } catch (error) {
           console.error('Error deleting patient:', error)
         }
+      }
+    },
+    async saveTinnitusProfile(patientId, profileData) {
+      try {
+        const response = await axios.post(`/api/data/patients/${patientId}/profiling`, profileData)
+        if (response.data.success) {
+          // Actualizar estado local tras guardado exitoso
+          this.latestProfile = { ...profileData, id: response.data.data.id }
+          return response.data.data
+        }
+      } catch (error) {
+        console.error('Error saving tinnitus profile:', error)
+        throw error
+      }
+    },
+    async saveTinnitusMapping(patientId, mappingData) {
+      try {
+        const response = await axios.post(`/api/data/patients/${patientId}/mapping`, mappingData)
+        if (response.data.success) {
+          this.latestMapping = { ...mappingData, id: response.data.data.id }
+          return response.data.data
+        }
+      } catch (error) {
+        console.error('Error saving tinnitus mapping:', error)
+        throw error
       }
     }
   }

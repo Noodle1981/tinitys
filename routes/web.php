@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\PatientController;
 
 Route::view('/', 'welcome')->name('home');
 
@@ -14,12 +15,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Data Routes (JSON)
     Route::prefix('api/data')->group(function () {
-        Route::get('patients', [\App\Http\Controllers\PatientController::class, 'index'])->name('api.patients.index');
-        Route::post('patients', [\App\Http\Controllers\PatientController::class, 'store'])->name('api.patients.store');
-        Route::get('patients/{id}', [\App\Http\Controllers\PatientController::class, 'show'])->name('api.patients.show');
-        Route::put('patients/{id}', [\App\Http\Controllers\PatientController::class, 'update'])->name('api.patients.update');
-        Route::post('patients/{id}/audiometry', [\App\Http\Controllers\PatientController::class, 'saveAudiometry'])->name('api.patients.audiometry');
-        Route::delete('patients/{id}', [\App\Http\Controllers\PatientController::class, 'destroy'])->name('api.patients.destroy');
+        Route::get('patients', [PatientController::class, 'index'])->name('api.patients.index');
+        Route::post('patients', [PatientController::class, 'store'])->name('api.patients.store');
+        Route::get('patients/{id}', [PatientController::class, 'show'])->name('api.patients.show');
+        Route::put('patients/{id}', [PatientController::class, 'update'])->name('api.patients.update');
+        Route::post('patients/{id}/audiometry', [PatientController::class, 'saveAudiometry'])->name('api.patients.audiometry');
+        Route::post('patients/{id}/profiling', [PatientController::class, 'saveProfiling'])->name('api.patients.profiling');
+        Route::post('patients/{id}/mapping', [PatientController::class, 'saveMapping'])->name('api.patients.mapping');
+        Route::delete('patients/{id}', [PatientController::class, 'destroy'])->name('api.patients.destroy');
     });
 
     // Patient Context Group

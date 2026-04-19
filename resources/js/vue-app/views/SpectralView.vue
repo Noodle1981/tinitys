@@ -186,34 +186,38 @@ const tinnitusZonesPlugin = {
   id: 'tinnitusZones',
   beforeDatasetsDraw(chart) {
     const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart
-    
-    const drawZone = (hz, color) => {
+    if (!x || !store.latestMapping) return
+
+    const drawZone = (hz, color, borderColor) => {
       const xPos = x.getPixelForValue(hz)
       if (xPos >= left && xPos <= right) {
         ctx.save()
         ctx.fillStyle = color
-        // Width of the shaded area (similar to legacy 30px)
-        ctx.fillRect(xPos - 20, top, 40, bottom - top)
+        ctx.strokeStyle = borderColor
+        ctx.lineWidth = 1
+        const rectWidth = 45 // Slightly wider
+        ctx.fillRect(xPos - rectWidth/2, top, rectWidth, bottom - top)
+        ctx.strokeRect(xPos - rectWidth/2, top, rectWidth, bottom - top)
         ctx.restore()
       }
     }
 
-    // Process Mapping from Store
-    if (store.latestMapping.right?.status === 'symptomatic') {
+    // Oído Derecho (Rojo)
+    if (store.latestMapping.right?.layers) {
       store.latestMapping.right.layers.forEach(layer => {
         if (layer.vol > 0) {
-          // Linear interpolation for Hz from 0-100 slider (Log scale in Audio Engine)
           const clinicalHz = 125 * Math.pow(2, (layer.freq / 100) * 6)
-          drawZone(clinicalHz, 'rgba(239, 68, 68, 0.08)')
+          drawZone(clinicalHz, 'rgba(239, 68, 68, 0.25)', 'rgba(239, 68, 68, 0.5)')
         }
       })
     }
 
-    if (store.latestMapping.left?.status === 'symptomatic') {
+    // Oído Izquierdo (Azul)
+    if (store.latestMapping.left?.layers) {
       store.latestMapping.left.layers.forEach(layer => {
         if (layer.vol > 0) {
           const clinicalHz = 125 * Math.pow(2, (layer.freq / 100) * 6)
-          drawZone(clinicalHz, 'rgba(59, 130, 246, 0.08)')
+          drawZone(clinicalHz, 'rgba(59, 130, 246, 0.25)', 'rgba(59, 130, 246, 0.5)')
         }
       })
     }
@@ -274,7 +278,7 @@ const plugins = [speechBananaPlugin, tinnitusZonesPlugin]
         </div>
 
         <div class="flex-1 min-h-0 relative">
-          <Line :data="chartData" :options="chartOptions" :plugins="plugins" />
+          <Line :key="store.selectedPatient?.id + '-' + (store.latestMapping?.id || 'none')" :data="chartData" :options="chartOptions" :plugins="plugins" />
         </div>
 
         <div class="mt-6 p-4 bg-primary-50 rounded-2xl border border-primary-100 flex items-start gap-4">
@@ -361,7 +365,9 @@ const plugins = [speechBananaPlugin, tinnitusZonesPlugin]
   </div>
 </template>
 
-<style scoped>
+<style lang="postcss" scoped>
+@reference "../../../css/app.css";
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }

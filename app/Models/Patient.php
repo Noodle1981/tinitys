@@ -85,6 +85,11 @@ class Patient extends Model
         return $this->hasOne(TinnitusProfile::class);
     }
 
+    public function tinnitusMapping()
+    {
+        return $this->hasOne(TinnitusMapping::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

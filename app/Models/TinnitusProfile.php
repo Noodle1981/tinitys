@@ -27,6 +27,10 @@ class TinnitusProfile extends Model
         'warble_tone_preference',
         'loud_noise_exacerbation',
         'residual_inhibition',
+        'fatigue_level',
+        'has_puna',
+        'has_cold',
+        'has_throat_pain',
         'recommendations',
     ];
 
@@ -35,6 +39,9 @@ class TinnitusProfile extends Model
         'discrimination_difficulty' => 'boolean',
         'warble_tone_preference' => 'boolean',
         'loud_noise_exacerbation' => 'boolean',
+        'has_puna' => 'boolean',
+        'has_cold' => 'boolean',
+        'has_throat_pain' => 'boolean',
     ];
 
     public function patient()
