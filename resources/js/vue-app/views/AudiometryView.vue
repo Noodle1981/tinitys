@@ -31,9 +31,16 @@ const historyOptions = computed(() => {
   }))
 })
 
+// Auto-seleccionar el registro más reciente al cargar
+watch(historyOptions, (newVal) => {
+  if (newVal.length > 0 && !selectedHistory.value) {
+    selectedHistory.value = newVal[0]
+  }
+}, { immediate: true })
+
+// Visualizar datos históricos
 watch(selectedHistory, (newVal) => {
   if (newVal && newVal.data) {
-    // Clone to local state for visualization
     audiometry.value = JSON.parse(JSON.stringify(newVal.data))
   }
 })
@@ -59,7 +66,7 @@ const openEditAid = (aid) => {
 
 const createNewAid = (ear) => {
   editingAid.value = {
-    id: 'ha_' + Date.now(),
+    id: null,
     ear: ear,
     brand: '',
     model: '',
@@ -78,21 +85,37 @@ const createNewAid = (ear) => {
   aidDialogVisible.value = true
 }
 
-const saveAid = () => {
-  const existing = store.hearingAids.find(a => a.id === editingAid.value.id)
-  if (existing) {
-    store.updateHearingAid(editingAid.value)
+const saveAid = async () => {
+  // TODO: Implementar store.saveHearingAid si es necesario, 
+  // por ahora lo manejamos localmente hasta siguiente fase
+  const index = store.hearingAids.findIndex(a => a.id === editingAid.value.id)
+  if (index !== -1) {
+    store.hearingAids[index] = { ...editingAid.value }
   } else {
     store.hearingAids.push({ ...editingAid.value })
   }
   aidDialogVisible.value = false
 }
 
-// Sync with store
+// Sincronización con el store
 const audiometry = ref(JSON.parse(JSON.stringify(store.audiometryData)))
 
+// Al actualizar el store (ej. al abrir un paciente o cargar historial), actualizamos localmente
+watch(() => store.audiometryData, (newVal) => {
+   const currentJson = JSON.stringify(audiometry.value)
+   const newJson = JSON.stringify(newVal)
+   if (currentJson !== newJson) {
+     audiometry.value = JSON.parse(newJson)
+   }
+}, { deep: true })
+
+// Al cambiar localmente (dibujando), notificamos al store
 watch(audiometry, (newVal) => {
-  store.updateAudiometry(newVal)
+  const storeJson = JSON.stringify(store.audiometryData)
+  const localJson = JSON.stringify(newVal)
+  if (storeJson !== localJson) {
+    store.updateAudiometry(newVal)
+  }
 }, { deep: true })
 
 const addToHistory = () => {
@@ -126,21 +149,29 @@ const save = () => {
   saveDialogVisible.value = true
 }
 
-const confirmSave = () => {
-  // En una app real, esto iría a la API. Aquí simulamos el guardado en el historial local.
-  const newRecord = {
-    id: 'aud_hist_' + Date.now(),
-    date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
-    type: selectedType.value,
-    data: JSON.parse(JSON.stringify(audiometry.value))
+const confirmSave = async () => {
+  if (!store.selectedPatient) {
+      alert('Debe seleccionar un paciente antes de guardar')
+      return
   }
   
-  store.patientHistory.unshift(newRecord)
-  store.updateAudiometry(audiometry.value)
-  
-  saveDialogVisible.value = false
-  alert(`Audiometría "${selectedType.value}" guardada con éxito en el historial.`)
+  loading.value = true
+  try {
+      await store.saveAudiometrySession(store.selectedPatient.id, {
+          type: selectedType.value,
+          audiometry_data: JSON.parse(JSON.stringify(audiometry.value)),
+          notes: ''
+      })
+      saveDialogVisible.value = false
+      alert(`Audiometría "${selectedType.value}" guardada con éxito.`)
+  } catch (error) {
+      alert('Error al guardar la audiometría')
+  } finally {
+      loading.value = false
+  }
 }
+
+const loading = ref(false)
 </script>
 
 <template>
@@ -148,17 +179,6 @@ const confirmSave = () => {
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
       <!-- Toolbar (Left) -->
       <aside class="lg:col-span-3 flex flex-col gap-3 h-full overflow-hidden">
-        <!-- Patient Context (Compact) -->
-        <div class="bg-primary-900 px-4 py-3 rounded-xl shadow-md shrink-0 border border-white/5">
-           <div class="flex items-center justify-between gap-2">
-             <div class="overflow-hidden">
-               <p class="text-[8px] font-bold uppercase text-primary-400 tracking-widest leading-none mb-1">Paciente</p>
-               <p class="text-xs font-bold text-white truncate">{{ store.selectedPatient?.name }}</p>
-             </div>
-             <TrendingUp :size="14" class="text-accent-blue" />
-           </div>
-        </div>
-
         <!-- Ear Selector (Compact) -->
         <div class="bg-white p-3 rounded-xl border border-primary-100 shadow-sm shrink-0">
           <div class="grid grid-cols-2 gap-2">
@@ -218,15 +238,15 @@ const confirmSave = () => {
 
         <!-- Legend (Restored) -->
         <div class="bg-primary-900 border-none p-4 rounded-xl shadow-md shrink-0 border border-white/5">
-          <p class="text-[8px] font-bold uppercase text-[#FDE047] mb-2 tracking-widest opacity-60">Información Clínica</p>
+          <p class="text-[8px] font-bold uppercase text-audio-speech mb-2 tracking-widest opacity-60">Información Clínica</p>
           <ul class="space-y-2">
             <li class="flex items-start gap-2">
-              <div class="w-3 h-3 rounded-full bg-[#FDE047]/40 border border-[#FDE047] mt-0.5"></div>
-              <p class="text-[10px] text-[#FDE047]/90 leading-tight">La "Banana del Habla" indica el rango donde se perciben los sonidos del lenguaje.</p>
+              <div class="w-3 h-3 rounded-full bg-audio-speech/40 border border-audio-speech mt-0.5"></div>
+              <p class="text-[10px] text-audio-speech/90 leading-tight">La "Banana del Habla" indica el rango donde se perciben los sonidos del lenguaje.</p>
             </li>
             <li class="flex items-start gap-2">
               <div class="w-3 h-0.5 bg-audio-right mt-1.5"></div>
-              <p class="text-[10px] text-[#FDE047]/90 leading-tight">Los saltos de línea indican frecuencias no evaluadas o falta de audición.</p>
+              <p class="text-[10px] text-audio-speech/90 leading-tight">Los saltos de línea indican frecuencias no evaluadas o falta de audición.</p>
             </li>
           </ul>
         </div>
@@ -263,7 +283,7 @@ const confirmSave = () => {
               @click="openEditAid(aid)"
               :class="[
                 'p-2 rounded-lg border cursor-pointer transition-all hover:border-primary-300',
-                aid.ear === 'right' ? 'border-audio-right/20 bg-audio-right/[0.02]' : 'border-audio-left/20 bg-audio-left/[0.02]'
+                aid.ear === 'right' ? 'border-audio-right/20 bg-audio-right/2' : 'border-audio-left/20 bg-audio-left/2'
               ]"
             >
               <div class="flex items-center gap-1.5 mb-1">
@@ -277,14 +297,14 @@ const confirmSave = () => {
           <div v-else class="flex flex-col gap-2">
             <button 
               @click="createNewAid('right')"
-              class="w-full py-2 px-3 rounded-lg border border-dashed border-audio-right/30 text-audio-right bg-audio-right/[0.02] hover:bg-audio-right/[0.05] transition-all flex items-center justify-between group"
+              class="w-full py-2 px-3 rounded-lg border border-dashed border-audio-right/30 text-audio-right bg-audio-right/2 hover:bg-audio-right/5 transition-all flex items-center justify-between group"
             >
               <span class="text-[8px] font-bold uppercase tracking-tight">Agregar Audífono OD</span>
               <Circle :size="10" stroke-width="3" />
             </button>
             <button 
               @click="createNewAid('left')"
-              class="w-full py-2 px-3 rounded-lg border border-dashed border-audio-left/30 text-audio-left bg-audio-left/[0.02] hover:bg-audio-left/[0.05] transition-all flex items-center justify-between group"
+              class="w-full py-2 px-3 rounded-lg border border-dashed border-audio-left/30 text-audio-left bg-audio-left/2 hover:bg-audio-left/5 transition-all flex items-center justify-between group"
             >
               <span class="text-[8px] font-bold uppercase tracking-tight">Agregar Audífono OI</span>
               <X :size="10" stroke-width="3" />
@@ -315,7 +335,7 @@ const confirmSave = () => {
       <!-- Canvas (Right) -->
       <main class="lg:col-span-9 flex flex-col min-h-0 h-full">
         <div class="bg-white p-4 rounded-2xl border border-primary-100 shadow-lg relative overflow-hidden flex-1 flex flex-col">
-          <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-audio-right via-audio-speech to-audio-left opacity-30"></div>
+          <div class="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-audio-right via-audio-speech to-audio-left opacity-30"></div>
           
           <div class="mb-3 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">

@@ -169,6 +169,7 @@ const drawGrid = (c) => {
 }
 
 const drawEarData = (c, data, color, type) => {
+  if (!data) return
   const freqs = Object.keys(data)
     .map(Number)
     .filter(f => data[f] !== null && data[f] !== undefined)

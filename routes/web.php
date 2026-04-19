@@ -18,6 +18,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('patients', [\App\Http\Controllers\PatientController::class, 'store'])->name('api.patients.store');
         Route::get('patients/{id}', [\App\Http\Controllers\PatientController::class, 'show'])->name('api.patients.show');
         Route::put('patients/{id}', [\App\Http\Controllers\PatientController::class, 'update'])->name('api.patients.update');
+        Route::post('patients/{id}/audiometry', [\App\Http\Controllers\PatientController::class, 'saveAudiometry'])->name('api.patients.audiometry');
         Route::delete('patients/{id}', [\App\Http\Controllers\PatientController::class, 'destroy'])->name('api.patients.destroy');
     });
 

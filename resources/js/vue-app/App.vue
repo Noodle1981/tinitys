@@ -26,14 +26,28 @@ const route = useRoute()
 const router = useRouter()
 const isSidebarOpen = ref(true)
 
+// Sincronizar paciente desde la URL si es necesario
+const syncPatientFromRoute = async () => {
+  const patientId = route.params.id
+  if (patientId && (!store.selectedPatient || store.selectedPatient.id != patientId)) {
+    // Si tenemos ID en la URL pero no coincide con el store, lo cargamos
+    await store.selectPatient({ id: patientId })
+  }
+}
+
+// Observar cambios en el ID de la URL
+import { watch, onMounted } from 'vue'
+watch(() => route.params.id, syncPatientFromRoute)
+onMounted(syncPatientFromRoute)
+
 const globalNavigation = [
   { name: 'Pacientes', icon: Users, path: '/' },
   { name: 'Configuración', icon: Settings, path: '/settings' },
 ]
 
 const patientNavigation = computed(() => {
-  if (!store.selectedPatient) return []
-  const id = store.selectedPatient.id
+  const id = store.selectedPatient?.id || route.params.id
+  if (!id) return []
   return [
     { name: 'Audiometría', icon: Ear, path: `/${id}/audiometry` },
     { name: 'Perfil Tinitus', icon: ClipboardList, path: `/${id}/profiling` },
@@ -43,7 +57,7 @@ const patientNavigation = computed(() => {
   ]
 })
 
-const isEcosystem = computed(() => !!store.selectedPatient)
+const isEcosystem = computed(() => !!store.selectedPatient || !!route.params.id)
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
@@ -73,7 +87,7 @@ const exitEcosystem = () => {
       </div>
 
       <!-- Patient Context Card -->
-      <div v-if="isEcosystem && isSidebarOpen" class="px-4 py-2 mx-4 mb-4 bg-white/5 rounded-2xl border border-white/10">
+      <div v-if="isEcosystem && isSidebarOpen && store.selectedPatient" class="px-4 py-2 mx-4 mb-4 bg-white/5 rounded-2xl border border-white/10">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-accent-blue/20 flex items-center justify-center text-accent-blue">
             <User :size="20" />
@@ -110,19 +124,25 @@ const exitEcosystem = () => {
         </template>
         
         <template v-else>
-          <p v-if="isSidebarOpen" class="px-3 mb-2 text-[10px] font-bold uppercase text-primary-500 tracking-widest">Ecosistema Clínico</p>
-          <RouterLink 
-            v-for="item in patientNavigation" 
-            :key="item.name" 
-            :to="item.path"
-            :class="[
-              'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group',
-              route.path === item.path ? 'bg-accent-red text-white' : 'text-primary-400 hover:bg-white/5 hover:text-white'
-            ]"
-          >
-            <component :is="item.icon" class="w-5 h-5 shrink-0" />
-            <span v-if="isSidebarOpen" class="font-medium text-sm">{{ item.name }}</span>
-          </RouterLink>
+          <div class="px-3 mb-4 mt-2">
+            <p v-if="isSidebarOpen" class="text-[9px] font-black uppercase text-accent-blue tracking-[0.2em] opacity-80 mb-4">Ecosistema Clínico</p>
+            <div v-else class="h-px bg-white/10 w-full mb-4"></div>
+            
+            <RouterLink 
+              v-for="item in patientNavigation" 
+              :key="item.name" 
+              :to="item.path"
+              :class="[
+                'flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group mb-1',
+                route.path === item.path 
+                  ? 'bg-accent-blue text-white shadow-lg shadow-blue-500/20' 
+                  : 'text-primary-400 hover:bg-white/5 hover:text-white'
+              ]"
+            >
+              <component :is="item.icon" class="w-5 h-5 shrink-0" :class="route.path === item.path ? 'animate-pulse' : ''" />
+              <span v-if="isSidebarOpen" class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+            </RouterLink>
+          </div>
         </template>
       </nav>
 
@@ -139,7 +159,26 @@ const exitEcosystem = () => {
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
       <header class="h-20 bg-white border-b border-primary-200 flex items-center justify-between px-8 shrink-0">
-        <span></span> <!-- Placeholder to keep justify-between working as intended if needed, or simply let the right side align -->
+        <!-- Patient Context (Top Nav) -->
+        <div v-if="isEcosystem && store.selectedPatient" class="flex items-center gap-4 animate-in slide-in-from-left duration-500">
+           <div class="h-10 w-px bg-primary-100 hidden md:block"></div>
+           <div class="flex flex-col">
+              <h2 class="text-sm font-black uppercase text-primary-900 tracking-tight leading-none">{{ store.selectedPatient.name }}</h2>
+              <div class="flex items-center gap-2 mt-1">
+                 <span class="text-[9px] font-bold text-primary-400 uppercase tracking-widest">DNI: {{ store.selectedPatient.dni }}</span>
+                 <span class="text-[10px] text-primary-200">|</span>
+                 <span class="text-[9px] font-bold text-accent-blue uppercase tracking-widest">{{ store.selectedPatient.age }} Años</span>
+              </div>
+           </div>
+        </div>
+        <div v-else-if="isEcosystem" class="flex items-center gap-4 animate-pulse">
+           <div class="h-10 w-px bg-primary-100 hidden md:block"></div>
+           <div class="flex flex-col gap-2">
+              <div class="h-3 w-32 bg-primary-100 rounded"></div>
+              <div class="h-2 w-20 bg-primary-50 rounded"></div>
+           </div>
+        </div>
+        <span v-else></span>
 
         <div class="flex items-center gap-6">
           <button class="relative p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-all">
@@ -167,7 +206,7 @@ const exitEcosystem = () => {
   </div>
 </template>
 
-<style>
+<style lang="postcss">
 @reference "../../css/app.css";
 
 /* Global Tailwind Adjustments */

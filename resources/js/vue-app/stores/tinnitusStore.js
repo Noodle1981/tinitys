@@ -154,13 +154,52 @@ export const useTinnitusStore = defineStore('tinnitus', {
       try {
         const response = await axios.get(`/api/data/patients/${patient.id}`)
         if (response.data.success) {
-          this.selectedPatient = response.data.data
-          // Sincronizar sub-objetos si es necesario
-          this.hearingAids = this.selectedPatient.hearing_aids_data?.current_devices || []
+          const data = response.data.data
+          this.selectedPatient = data
+          
+          // Mapear historial de sesiones (audiometrías)
+          this.patientHistory = (data.sessions || []).map(s => ({
+            id: s.id,
+            date: new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+            type: s.type || 'Evaluación',
+            data: s.audiometry_data || { right: {}, left: {} }
+          }))
+
+          // Mapear Equipamiento
+          this.hearingAids = data.hearing_aids || []
+          
+          // Cargar última audiometría si existe
+          if (this.patientHistory.length > 0) {
+            this.audiometryData = JSON.parse(JSON.stringify(this.patientHistory[0].data))
+          } else {
+            this.audiometryData = { right: {}, left: {} }
+          }
         }
       } catch (error) {
         console.error('Error fetching patient details:', error)
       }
+    },
+    async saveAudiometrySession(patientId, sessionData) {
+      try {
+        const response = await axios.post(`/api/data/patients/${patientId}/audiometry`, sessionData)
+        if (response.data.success) {
+          const s = response.data.data
+          const newRecord = {
+            id: s.id,
+            date: new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+            type: s.type,
+            data: s.audiometry_data
+          }
+          this.patientHistory.unshift(newRecord)
+          return response.data.data
+        }
+      } catch (error) {
+        console.error('Error saving audiometry session:', error)
+        throw error
+      }
+    },
+    updateAudiometry(newData) {
+      this.audiometryData = newData
     },
     unselectPatient() {
       this.selectedPatient = null

@@ -68,7 +68,7 @@ class PatientController extends Controller
     }
 
     /**
-     * Obtiene toda la ficha técnica (5 pestañas) de un paciente.
+     * Obtiene toda la ficha técnica (5 pestañas) de un paciente, incluyendo sesiones de audiometría y equipamiento.
      */
     public function show($id)
     {
@@ -77,12 +77,36 @@ class PatientController extends Controller
             'exposure', 
             'habits', 
             'tinnitusProfile',
-            'sessions'
+            'sessions' => function($q) {
+                $q->orderBy('created_at', 'desc');
+            },
+            'hearingAids'
         ])->findOrFail($id);
 
         return response()->json([
             'success' => true,
             'data' => $patient
+        ]);
+    }
+
+    /**
+     * Guarda una nueva sesión de audiometría.
+     */
+    public function saveAudiometry(Request $request, $id)
+    {
+        $patient = Patient::findOrFail($id);
+
+        $session = $patient->sessions()->create([
+            'type' => $request->input('type', 'Seguimiento'),
+            'audiometry_data' => $request->input('audiometry_data'),
+            'metadata' => $request->input('metadata', []),
+            'notes' => $request->input('notes'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesión de audiometría guardada correctamente',
+            'data' => $session
         ]);
     }
 

@@ -75,6 +75,16 @@ class Patient extends Model
         return $this->hasMany(PatientSession::class);
     }
 
+    public function hearingAids()
+    {
+        return $this->hasMany(HearingAid::class);
+    }
+
+    public function tinnitusProfile()
+    {
+        return $this->hasOne(TinnitusProfile::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
