@@ -139,20 +139,7 @@ const exitEcosystem = () => {
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
       <header class="h-20 bg-white border-b border-primary-200 flex items-center justify-between px-8 shrink-0">
-        <div class="flex items-center gap-4">
-          <button @click="toggleSidebar" class="p-2 hover:bg-primary-50 rounded-lg text-primary-500">
-            <Menu v-if="!isSidebarOpen" class="w-5 h-5" />
-            <X v-else class="w-5 h-5" />
-          </button>
-          <div class="relative hidden md:block">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar..." 
-              class="pl-10 pr-4 py-2 bg-primary-50 border border-primary-200 rounded-xl w-64 focus:outline-none focus:ring-2 focus:ring-accent-red/20 focus:border-accent-red transition-all"
-            />
-          </div>
-        </div>
+        <span></span> <!-- Placeholder to keep justify-between working as intended if needed, or simply let the right side align -->
 
         <div class="flex items-center gap-6">
           <button class="relative p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-all">

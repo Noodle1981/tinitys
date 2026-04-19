@@ -12,6 +12,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::redirect('/dashboard', '/patients');
 
+    // Data Routes (JSON)
+    Route::prefix('api/data')->group(function () {
+        Route::get('patients', [\App\Http\Controllers\PatientController::class, 'index'])->name('api.patients.index');
+        Route::post('patients', [\App\Http\Controllers\PatientController::class, 'store'])->name('api.patients.store');
+        Route::get('patients/{id}', [\App\Http\Controllers\PatientController::class, 'show'])->name('api.patients.show');
+        Route::put('patients/{id}', [\App\Http\Controllers\PatientController::class, 'update'])->name('api.patients.update');
+        Route::delete('patients/{id}', [\App\Http\Controllers\PatientController::class, 'destroy'])->name('api.patients.destroy');
+    });
+
     // Patient Context Group
     Route::prefix('patient/{patientId}')->name('patients.')->group(function () {
         // Redirect root patient URL to default clinical view

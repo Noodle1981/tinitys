@@ -1,12 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTinnitusStore } from '../stores/tinnitusStore'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
-import PatientDialog from '../components/PatientDialog.vue'
+import Dialog from 'primevue/dialog'
+import PatientClinicalFile from '../components/PatientClinicalFile.vue'
 import { Plus, Search, Pencil, Trash2, FileText } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
@@ -15,6 +16,10 @@ const router = useRouter()
 const globalFilter = ref('')
 const displayDialog = ref(false)
 const editingPatient = ref(null)
+
+onMounted(() => {
+  store.fetchPatients()
+})
 
 const filteredPatients = computed(() => {
   if (!globalFilter.value) return store.patients
@@ -122,7 +127,7 @@ const getLateralitySeverity = (lat) => {
           </template>
         </Column>
 
-        <Column header="Acciones" headerClass="text-[10px] uppercase font-bold text-primary-400 tracking-tight text-right pr-6" bodyClass="text-right pr-4">
+        <Column header="" headerClass="text-[10px] uppercase font-bold text-primary-400 tracking-tight text-right pr-6" bodyClass="text-right pr-6">
           <template #body="slotProps">
             <div class="flex items-center justify-end gap-1">
               <Button @click="editPatient(slotProps.data)" severity="secondary" text rounded size="small">
@@ -156,12 +161,20 @@ const getLateralitySeverity = (lat) => {
       </DataTable>
     </div>
 
-    <!-- Modal Form -->
-    <PatientDialog 
+    <!-- Modal Ficha Técnica (5 Pestañas) -->
+    <Dialog 
       v-model:visible="displayDialog" 
-      :patient="editingPatient"
-      @saved="() => {}"
-    />
+      modal 
+      :showHeader="false" 
+      class="border-none bg-transparent shadow-none w-full max-w-5xl px-4"
+      contentClass="p-0 bg-transparent"
+    >
+      <PatientClinicalFile 
+        :patient="editingPatient"
+        @close="displayDialog = false"
+        @saved="store.fetchPatients()"
+      />
+    </Dialog>
   </div>
 </template>
 

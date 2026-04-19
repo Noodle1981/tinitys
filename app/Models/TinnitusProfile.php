@@ -23,11 +23,18 @@ class TinnitusProfile extends Model
         'right_index',
         'left_ear_intensity',
         'right_ear_intensity',
+        'discrimination_difficulty',
+        'warble_tone_preference',
+        'loud_noise_exacerbation',
+        'residual_inhibition',
         'recommendations',
     ];
 
     protected $casts = [
         'recommendations' => 'array',
+        'discrimination_difficulty' => 'boolean',
+        'warble_tone_preference' => 'boolean',
+        'loud_noise_exacerbation' => 'boolean',
     ];
 
     public function patient()

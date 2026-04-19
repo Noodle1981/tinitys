@@ -254,7 +254,7 @@ const plugins = [speechBananaPlugin, tinnitusZonesPlugin]
     <div v-if="isReady" class="flex-1 grid grid-cols-12 gap-6 min-h-0">
       <!-- Left: Chart -->
       <div class="col-span-12 lg:col-span-9 bg-white p-6 rounded-3xl border border-primary-100 shadow-lg flex flex-col relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-audio-right via-audio-speech to-audio-left opacity-30"></div>
+        <div class="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-audio-right via-audio-speech to-audio-left opacity-30"></div>
         
         <div class="mb-6 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -310,7 +310,7 @@ const plugins = [speechBananaPlugin, tinnitusZonesPlugin]
           </div>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-primary-100 shadow-sm flex-1 flex flex-col items-center justify-center text-center p-8">
+        <div class="bg-white rounded-3xl border border-primary-100 shadow-sm flex-1 flex flex-col items-center justify-center text-center p-8">
            <CheckCircle2 :size="32" class="text-emerald-500 mb-4" />
            <p class="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-2">Confiabilidad de Superposición</p>
            <p class="text-xs text-primary-400 leading-relaxed">

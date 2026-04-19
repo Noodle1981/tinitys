@@ -19,8 +19,13 @@ class Patient extends Model
         'address',
         'city',
         'province',
+        'country',
         'phone',
         'civil_status',
+        'educational_level',
+        'children_count',
+        'children_ages',
+        'postal_code',
         'has_children',
         'work_status',
         'work_hours',
@@ -37,9 +42,11 @@ class Patient extends Model
         'has_children' => 'boolean',
     ];
 
-    public function getAge()
+    protected $appends = ['age'];
+
+    public function getAgeAttribute()
     {
-        return Carbon::parse($this->birth_date)->age;
+        return $this->birth_date ? Carbon::parse($this->birth_date)->age : null;
     }
 
     // Relaciones Clínicas Normalizadas
